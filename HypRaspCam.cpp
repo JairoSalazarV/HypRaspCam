@@ -12,6 +12,10 @@
 #include <string>
 #include <math.h>
 #include <fstream>
+#include <iostream>
+#include <sys/stat.h>
+#include <sstream>
+#include <streambuf>
 
 #include <ctime>
 #include <raspicam/raspicam.h>
@@ -26,9 +30,13 @@ void obtainIP(char* host);
 bool sendBigFrame( int newsockfd, std::string bigFrame );
 bool sendFile( int newsockfd, std::ifstream &infile );
 void funcPrintFirst(int n, int max, char *buffer);
+bool getRaspImg(strReqImg *reqImg, const std::string& fileName);
 bool openAndSetCamera( strReqImg *reqImg );
 unsigned char *funcCropImg(unsigned char* original, int origW, int x1, int y1, int x2, int y2);
+std::string file2String( const std::string &fileName );
 bool funcSaveFile(char* fileName, char* data, int fileLen, int w, int h);
+std::string *genCommand(strReqImg *reqImg, const std::string& fileName);
+bool fileExists( const std::string& fileName );
 
 raspicam::RASPICAM_EXPOSURE getExposureFromString ( std::string str );
 
@@ -102,6 +110,46 @@ int main(int argc, char *argv[])
   if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
     error("ERROR on binding");
   }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  /*
+  printf("Executing raspistill\n");
+  std::string fileName = "./tmpSnapshots/test.RGB888";
+  if( getRaspImg(reqImg,fileName) ){
+	  printf("Success\n");
+	  std::string tmpImg = file2String(fileName);
+	  printf("size: %d\n",tmpImg.size());
+  }else{
+	  printf("Fail\n");
+  }
+  return 1;
+  */
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
   unsigned int holdon = 1;
   while( holdon ){
@@ -353,50 +401,50 @@ int main(int argc, char *argv[])
     //Require image from scratch
     //..
     case 7:
-	//Try to turn on camera
+	//Prepare memory
 	memset( reqImg, '\0', sizeof(strReqImg)  );		
 	memcpy( reqImg, frameReceived, sizeof(strReqImg) );
 
 	//Send ACK with camera status
-	buffer[1] = ( openAndSetCamera( reqImg  ) )?1:0;
+	//buffer[1] = ( openAndSetCamera( reqImg  ) )?1:0;
+	buffer[1] = 1;
 	write(newsockfd,&buffer,2);
 	if( buffer[1] == 0 )break;
 	else{ 
 		//Get image
 		//..
-		Camera.grab();
-		int fileLen = Camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_RGB );
-		unsigned char *data=new unsigned char[ fileLen ];
-		Camera.retrieve ( data,raspicam::RASPICAM_FORMAT_IGNORE );//get camera image
-		//char tmpFileNameNot[] = "notCropped.ppm";
+		//Camera.grab();
+		//int fileLen = Camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_RGB );
+		//unsigned char *data=new unsigned char[ fileLen ];
+		//Camera.retrieve ( data,raspicam::RASPICAM_FORMAT_IGNORE );//get camera image		
+		//char tmpFileNameNot[] = "./tmpSnapshots/notCropped.ppm";
 		//funcSaveFile(tmpFileNameNot,(char*)data, fileLen, reqImg->imgCols, reqImg->imgRows);
-
-		//Crop image if neccesary
-		//..
-		if( reqImg->needCut ){
-			//printf("a(%d,%d) b(%d,%d) \n",reqImg->sqApSett.x1,reqImg->sqApSett.y1,reqImg->sqApSett.x2,reqImg->sqApSett.y2);			
-			int x1, y1, x2, y2, X1, Y1, X2, Y2, w, h, W, H;
-			x1 =  reqImg->sqApSett.x1;
-			x2 =  reqImg->sqApSett.x2;
-			y1 =  reqImg->sqApSett.y1;
-			y2 =  reqImg->sqApSett.y2;
-			w  = reqImg->sqApSett.width;
-			h   = reqImg->sqApSett.height;
-			W  = reqImg->imgCols;
-			H   = reqImg->imgRows;
-			X1 = round( (float)(x1 * W) / (float)w  );
-			X2 = round( (float)(x2 * W) / (float)w  );
-			Y1 = round( (float)(y1 * H) / (float)h  );
-			Y2 = round( (float)(y2 * H) / (float)h  );
-			printf("[(%d,%d)(%d,%d)] -> [(%d,%d)(%d,%d)] W(%d) H(%d)\n",x1, y1, x2, y2, X1, Y1, X2, Y2,W,H);
-			data = funcCropImg( data,  W,  X1, Y1, X2, Y2 );
-			fileLen = (X2-X1) * (Y2-Y1) * 3;
+		
+		printf("Making the snapshot by applying raspistill\n");
+		std::string fileName = "./tmpSnapshots/tmpImg.RGB888";
+		if( getRaspImg(reqImg,fileName) ){
+		  printf("Snapshot [OK]\n");
+		}else{
+		  printf("Snapshot[Fail]\n");
+		  break;
 		}
+
+		
 		
 		//Send image as frame
 		//..
-		std::string tmpImg(data,data+fileLen);//Begin -to- End		
-		printf("Sending image: \n", tmpImg.size());
+		//std::ifstream fileRead(fileName.c_str());
+		//std::string tmpImg(
+		//					std::istreambuf_iterator<char>(fileRead),
+		//					std::istreambuf_iterator<char>()
+		//				  );
+		std::string tmpImg = file2String(fileName);
+		printf("size: %d\n",tmpImg.size());
+		
+		
+		
+		//std::string tmpImg(data,data+fileLen);//Begin -to- End		
+		//printf("Sending image: \n", tmpImg.size());
 		if( sendBigFrame( newsockfd, tmpImg ) ){
 			printf("Photogram sent\n");
 		}else{
@@ -405,8 +453,8 @@ int main(int argc, char *argv[])
 
 		//Turn of the camera and release memo
 		//..
-		delete[] data;
-		Camera.release();
+		//delete[] data;
+		//Camera.release();
 	}
 	
 
@@ -433,6 +481,19 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+std::string file2String( const std::string &fileName ){
+	std::ifstream t(fileName.c_str());
+	std::string str;
+	t.seekg(0,std::ios::end);
+	str.reserve(t.tellg());
+	t.seekg(0,std::ios::beg);
+	str.assign(
+					(std::istreambuf_iterator<char>(t)),
+					std::istreambuf_iterator<char>()
+			  );
+	return str;
+}
+
 bool funcSaveFile(char* fileName, char* data, int fileLen, int w, int h){
 	std::ofstream outFile( fileName,std::ios::binary );
 	outFile<<"P6\n"<<w<<" "<<h<<" 255\n";
@@ -445,7 +506,7 @@ unsigned char *funcCropImg(unsigned char* original, int origW, int x1, int y1, i
 	int lastW = x2-x1;
 	int lastH = y2-y1;
 	unsigned char *lastImg = new unsigned char[(lastW*lastH*3)];
-	int r, aux;	
+	int r, aux;
 	for( r=0; r<lastH; r++ ){
 		aux = ((y1-1+r)*origW*3)+(x1*3);
 		memcpy( &lastImg[r*lastW*3], &original[aux],(lastW*3));
@@ -453,15 +514,130 @@ unsigned char *funcCropImg(unsigned char* original, int origW, int x1, int y1, i
 
 	//save
 	//..
-	//char tmpFileName[] = "cropped.ppm";
-	//funcSaveFile(tmpFileName,(char*)lastImg, (lastW*lastH*3), lastW, lastH);
-
-
+	printf("lastW(%d) lastH(%d)\n",lastW,lastH);
+	char tmpFileName[] = "./tmpSnapshots/crop.ppm";
+	funcSaveFile(tmpFileName,(char*)lastImg, (lastW*lastH*3), lastW, lastH);
 	return lastImg;
 }
 
 
+bool getRaspImg(strReqImg *reqImg, const std::string &fileName){
+	
+	//Concatenate raspistill command
+	//raspistill -q 100 -gc -ifx colourbalance -ifx denoise  -o test.RGB888 -t 8000 -ss 1000000 -roi x,y,w,d 
+	//..	
+	std::string *raspistillCommand = genCommand(reqImg, fileName);
+	printf("Comm: %s\n",raspistillCommand->c_str());
+	//Prepare command as required
+	//char *tmpComm = new char[raspistillCommand->size()+1];
+	//std::copy(raspistillCommand->begin(), raspistillCommand->end(),tmpComm);
+	//tmpComm[raspistillCommand->size()] = '\0';
+	
+	//Execute raspistill
+	//..
+	//Remove file if exists	
+	if(fileExists(fileName)){
+		remove(fileName.c_str());	
+	}
+	//Execute raspistill
+	FILE* pipe;
+	//pipe = popen(tmpComm, "r");
+	pipe = popen(raspistillCommand->c_str(), "r");
+	pclose(pipe);
+	//delete[] tmpComm;
+	
+	//Verify if it was created the snapshot
+	//..
+	if(!fileExists(fileName)){
+		return false;
+	}
+	
+	
+	return true;
+		
+}
 
+std::string *genCommand(strReqImg *reqImg, const std::string& fileName){
+	
+	//Initialize command
+	//..
+	std::string *tmpCommand = new std::string("raspistill -o ");
+	std::ostringstream ss;
+	tmpCommand->append(fileName);
+	tmpCommand->append(" -n -q 100 -gc");
+	//Colour balance?
+	if(reqImg->raspSett.ColorBalance){
+		tmpCommand->append(" -ifx colourbalance");
+	}
+	//Denoise?
+	if(reqImg->raspSett.Denoise){
+		tmpCommand->append(" -ifx denoise");
+	}
+	//Width
+	ss.str("");
+	ss<<reqImg->imgCols;
+	tmpCommand->append(" -w " + ss.str());
+	//Height
+	ss.str("");
+	ss<<reqImg->imgRows;
+	tmpCommand->append(" -h " + ss.str());
+	//Shuter speed
+	ss.str("");
+	ss<<reqImg->raspSett.ShutterSpeed;
+	tmpCommand->append(" -ss " + ss.str());
+	//Trigering timer
+	ss.str("");
+	ss<<(reqImg->raspSett.TriggerTime*1000);
+	tmpCommand->append(" -t " + ss.str());
+	
+	//Crop image if neccesary
+	//..
+	if( reqImg->needCut ){
+		float x,y,w,d;	
+		//Normalization
+		x = (float)reqImg->sqApSett.rectX / (float)_BIG_WIDTH;
+		y = (float)reqImg->sqApSett.rectY / (float)_BIG_HEIGHT;
+		w = (float)reqImg->imgCols / (float)_BIG_WIDTH;
+		d = (float)reqImg->imgRows / (float)_BIG_HEIGHT;
+		//Add region of interes to the raspistill command
+		tmpCommand->append(" -roi ");		
+		ss.str("");
+		ss<<x;
+		tmpCommand->append(ss.str()+",");
+		ss.str("");
+		ss<<y;
+		tmpCommand->append(ss.str()+",");
+		ss.str("");
+		ss<<w;
+		tmpCommand->append(ss.str()+","	);
+		ss.str("");
+		ss<<d;
+		tmpCommand->append(ss.str());
+	}
+	
+	//AWB
+	if(strcmp((char*)reqImg->raspSett.AWB, "none")!=0){
+		std::string sAWB((char*)reqImg->raspSett.AWB, sizeof(reqImg->raspSett.AWB));
+		tmpCommand->append(" -awb ");
+		tmpCommand->append(sAWB.c_str());
+		//printf("Entro a AWB: %s\n",sAWB.c_str());
+	}
+	
+	//Exposure
+	if(strcmp((char*)reqImg->raspSett.Exposure, "none")!=0){
+		std::string sExposure((char*)reqImg->raspSett.Exposure, sizeof(reqImg->raspSett.Exposure));
+		tmpCommand->append(" -ex ");
+		tmpCommand->append(sExposure.c_str());
+		//printf("Entro a Exp: %s\n",sExposure.c_str());
+	}
+	
+	return tmpCommand;
+}
+
+bool fileExists( const std::string& fileName ){
+	struct stat buffer;
+	return( stat(fileName.c_str(), &buffer) == 0 );
+}
 
 
 bool openAndSetCamera( strReqImg *reqImg ){
