@@ -1,4 +1,4 @@
-//Hola
+//11 August 2016 18:30
 #include <iostream>
 #include <pthread.h>
 #include <stdio.h>
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
   obtainIP(host);
 
   //Obtains the camera's name
-  char camName[] = "BabyFace\0";
+  char camName[] = "Silverado\0";
   FILE* pipe;
   std::string result;
 
