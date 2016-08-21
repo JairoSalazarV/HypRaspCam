@@ -108,7 +108,56 @@
       char IP[15];
       char Alias[20];
     }camSettings;
+    
+    typedef struct structRaspcamSettings{
+        //int         width;                  // 1280 to 2592
+        //int         height;                 // 960 to 1944
+        unsigned char AWB[20];                // OFF,AUTO,SUNLIGHT,CLOUDY,TUNGSTEN,FLUORESCENT,INCANDESCENT,FLASH,HORIZON
+        unsigned char Exposure[20];           // OFF,AUTO,NIGHT,NIGHTPREVIEW,BACKLIGHT,SPOTLIGHT,SPORTS,SNOW,BEACH,VERYLONG,FIXEDFPS,ANTISHAKE,FIREWORKS
+        u_int8_t      Brightness;             // 0 to 100
+        int           Sharpness;              // -100 to 100
+        int           Contrast;               // -100 to 100
+        int           Saturation;             // -100 to 100
+        int           SquareShutterSpeed;     // microsecs (0 - 3000000)
+        int           SquareShutterSpeedSmall;// microsecs (1 - 95000)
+        int           ShutterSpeed;           // microsecs (0 - 3000000)
+        int           ShutterSpeedSmall;      // microsecs (1 - 95000)
+        int           ISO;                    // 100 to 800
+        int           ExposureCompensation;   // -10 to 10
+        u_int8_t      Format;                 // 1->raspicam::RASPICAM_FORMAT_GRAY | 2->raspicam::RASPICAM_FORMAT_YUV420
+        u_int8_t      Red;                    // 0 to 8 set the value for the RED component of white balance
+        u_int8_t      Green;                  // 0 to 8 set the value for the GREEN component of white balance
+        u_int8_t      Preview;                // 0v1: Request a preview
+        u_int8_t      OneShot;                // 0: Video streaming | 1:Snapshot
+        u_int8_t      TriggerTime;            // Seconds before to take a photo
+        u_int8_t      Denoise;                // 0v1: Denoise efx
+        u_int8_t      ColorBalance;           // 0v1: ColorBalance efx
+    }structRaspcamSettings;
 
+	/*typedef struct structRaspcamSettings{
+        //int         width;                  // 1280 to 2592
+        //int         height;                 // 960 to 1944
+        unsigned char AWB[20];                // OFF,AUTO,SUNLIGHT,CLOUDY,TUNGSTEN,FLUORESCENT,INCANDESCENT,FLASH,HORIZON
+        unsigned char Exposure[20];           // OFF,AUTO,NIGHT,NIGHTPREVIEW,BACKLIGHT,SPOTLIGHT,SPORTS,SNOW,BEACH,VERYLONG,FIXEDFPS,ANTISHAKE,FIREWORKS
+        u_int8_t      Brightness;             // 0 to 100
+        int           Sharpness;              // -100 to 100
+        int           Contrast;               // -100 to 100
+        int           Saturation;             // -100 to 100
+        int           SquareShutterSpeed;     // microsecs (0 - 3000000)
+        int           SquareShutterSpeedSmall;// microsecs (1 - 95000)
+        int           ShutterSpeed;           // microsecs (0 - 3000000)
+        int           ShutterSpeedSmall;      // microsecs (1 - 95000)
+        int           ISO;                    // 100 to 800
+        int           ExposureCompensation;   // -10 to 10
+        u_int8_t      Format;                 // 1->raspicam::RASPICAM_FORMAT_GRAY | 2->raspicam::RASPICAM_FORMAT_YUV420
+        u_int8_t      Red;                    // 0 to 8 set the value for the RED component of white balance
+        u_int8_t      Green;                  // 0 to 8 set the value for the GREEN component of white balance
+        u_int8_t      Preview;                // 0v1: Request a preview
+        u_int8_t      OneShot;                // 0: Video streaming | 1:Snapshot
+        u_int8_t      TriggerTime;            // Seconds before to take a photo
+        u_int8_t      Denoise;                // 0v1: Denoise efx
+        u_int8_t      ColorBalance;           // 0v1: ColorBalance efx
+    }structRaspcamSettings;
     typedef struct structRaspcamSettings{
         //int             width;                // 1280 to 2592
         //int             height;               // 960 to 1944
@@ -131,6 +180,7 @@
         u_int8_t        Denoise;                // 0v1: Denoise efx
         u_int8_t        ColorBalance;           // 0v1: ColorBalance efx
     }structRaspcamSettings;
+    */
 
     typedef struct squareAperture{
         int canvasW;
@@ -141,6 +191,18 @@
         int rectH;//Len
     }squareAperture;
 
+	typedef struct strReqImg{
+        unsigned char idMsg;
+        unsigned char stabSec;
+        int imgCols;
+        int imgRows;
+        bool needCut;
+        bool squApert;
+        structRaspcamSettings raspSett;
+        squareAperture sqApSett;
+        squareAperture diffArea;
+    }strReqImg;
+	/*
     typedef struct strReqImg{
         unsigned char idMsg;
         unsigned char stabSec;
@@ -150,6 +212,7 @@
         structRaspcamSettings raspSett;
         squareAperture sqApSett;
     }strReqImg;
+    * */
 
     typedef struct structSettings{
         bool setted;
