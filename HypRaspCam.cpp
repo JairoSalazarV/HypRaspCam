@@ -1,4 +1,5 @@
 //11 August 2016 18:30
+//27 August 2016 morning
 #include <iostream>
 #include <pthread.h>
 #include <stdio.h>
@@ -19,7 +20,6 @@
 #include <streambuf>
 
 #include <ctime>
-#include <raspicam/raspicam.h>
 
 #include "lstStructs.h"
 
@@ -32,23 +32,15 @@ bool sendBigFrame( int newsockfd, std::string bigFrame );
 bool sendFile( int newsockfd, std::ifstream &infile );
 void funcPrintFirst(int n, int max, char *buffer);
 bool getRaspImg(strReqImg *reqImg, const std::string& fileName);
-bool openAndSetCamera( strReqImg *reqImg );
 unsigned char *funcCropImg(unsigned char* original, int origW, int x1, int y1, int x2, int y2);
 std::string file2String( const std::string &fileName );
 bool funcSaveFile(char* fileName, char* data, int fileLen, int w, int h);
 std::string *genCommand(strReqImg *reqImg, const std::string& fileName);
 bool fileExists( const std::string& fileName );
 
-raspicam::RASPICAM_EXPOSURE getExposureFromString ( std::string str );
-
-raspicam::RASPICAM_AWB getAwbFromString ( std::string str ) ;
-
 
 const unsigned int PORT  = 51717;
 //const unsigned int outPORT = 51717;//Mas grande
-
-
-raspicam::RaspiCam Camera;
 
 int main(int argc, char *argv[])
 {
@@ -57,23 +49,24 @@ int main(int argc, char *argv[])
   int i = 0;
  
   //Define variables
-  strReqImg *reqImg = (strReqImg*)malloc(sizeof(strReqImg));
+  strReqImg *reqImg 	= (strReqImg*)malloc(sizeof(strReqImg));
+  //strReqImg *reqImgSqu 	= (strReqImg*)malloc(sizeof(strReqImg));
   
   //Obtain the IP address
   char* host = (char*)malloc(NI_MAXHOST * sizeof(char));
   obtainIP(host);
 
   //Obtains the camera's name
-  char camName[] = "Silverado\0";
+  char camName[] = "IRis\0";
   FILE* pipe;
   std::string result;
 
 
   //Buffer
   char bufferComm[streamLen];
-  frameStruct *tmpFrame 		              = (frameStruct*)malloc(sizeof(frameStruct));
-  frameStruct *frame2Send 		            = (frameStruct*)malloc(sizeof(frameStruct));
-  frameStruct *frameReceived 	            = (frameStruct*)malloc(sizeof(frameStruct));
+  frameStruct *tmpFrame 		          = (frameStruct*)malloc(sizeof(frameStruct));
+  frameStruct *frame2Send 		          = (frameStruct*)malloc(sizeof(frameStruct));
+  frameStruct *frameReceived 	          = (frameStruct*)malloc(sizeof(frameStruct));
   structRaspcamSettings *raspcamSettings  = (structRaspcamSettings*)malloc(sizeof(structRaspcamSettings));
   structCamSelected *camSelected          = (structCamSelected*)malloc(sizeof(structCamSelected));
   unsigned int tmpFrameLen, headerLen;
@@ -268,198 +261,99 @@ int main(int argc, char *argv[])
         break;
 
     case 4:
-    	printf("Image requested\n");
-      infile.open("yo.jpg", std::ifstream::binary);
-      if( sendFile( newsockfd, infile ) ){
-        printf("File sent\n");
-      }else{
-        printf("File NOT sent\n");
-      }
-      infile.close();
-     	break;
+		printf("Image requested\n");
+		infile.open("yo.jpg", std::ifstream::binary);
+		if( sendFile( newsockfd, infile ) ){
+			printf("File sent\n");
+		}else{
+			printf("File NOT sent\n");
+		}
+		infile.close();
+		break;
     
     //Camera operations      
     case 5:
-      printf("[Camera instruction: %i] ",buffer[1]);
-      char camInst[2];
-      switch( buffer[1] ){
-        case 1:
-          printf("camInst: Turn on\n");
-
-          //Get raspCamSettings
-          bzero( raspcamSettings, sizeof(structRaspcamSettings) );
-          memcpy( raspcamSettings, &buffer[2], sizeof(structRaspcamSettings) );
-
-          //Try to turn on the camera
-          //Camera.setWidth( raspcamSettings->width );
-          //Camera.setHeight( raspcamSettings->height );
-          //printf("Opening Camera W(%i) H(%i)...\n",raspcamSettings->width,raspcamSettings->height);
-          if(camSelected->On){
-            printf("Camera is actually turn on W(%i) H(%i)\n",Camera.getWidth(),Camera.getHeight());
-            camInst[1] = 1; //Turned on successful
-          }else{
-            if ( Camera.open() ) {
-              printf("Sleeping for 3 secs until camera stabilizes\n");
-              sleep(3);
-              camInst[1] = 1; //Turned on successful
-              camSelected->On = true;
-              printf("Camera turned on\n");
-            }else{
-              printf("Error opening camera\n");
-              camInst[1] = 0; //Turned on error
-              camSelected->On = false;
-            }
-          }          
-          n = write(newsockfd,&camInst,2);          
-
-          /*
-          printf("W(%i) H(%i)\n", raspcamSettings->width, raspcamSettings->height );
-          printf("AWB(%s) Exposure(%s)\n", raspcamSettings->AWB, raspcamSettings->Exposure );
-          printf("Bri(%i) Sharp(%i)\n", raspcamSettings->Brightness, raspcamSettings->Sharpness );
-          printf("Contrast(%i) Saturation(%i)\n", raspcamSettings->Contrast, raspcamSettings->Saturation );
-          printf("ShutterSpeed(%i) ISO(%i)\n", raspcamSettings->ShutterSpeed, raspcamSettings->ISO );
-          printf("ExposureCompensation(%i) Format(%i)\n", raspcamSettings->ExposureCompensation, raspcamSettings->Format );
-          printf("Red(%i) Green(%i)\n", raspcamSettings->Red, raspcamSettings->Green );
-          */
-          break;
-        case 2:
-          printf("camInst: Turn off\n");
-          Camera.release();
-          camSelected->On = false;          
-          camInst[0] = 0;
-          camInst[1] = 1;
-          n = write(newsockfd,&camInst,2);
-          break;
-        case 3:
-          printf("camInst: Reset parameters\n");
-          //Get raspCamSettings
-          bzero( raspcamSettings, sizeof(structRaspcamSettings) );
-          memcpy( raspcamSettings, &buffer[2], sizeof(structRaspcamSettings) );
-          //Try to turn on the camera
-          //Camera.setWidth( raspcamSettings->width );
-          //Camera.setHeight( raspcamSettings->height );
-          //Send new imageSize
-          camInst[0] = 1;
-          camInst[1] = 1;
-          n = write(newsockfd,&camInst,2);
-          printf("Reseted camera parameters...\n");
-          break;
-        default:
-          printf("camInst: Default\n");
-          camInst[0] = 0;
-          camInst[1] = 0;
-          n = write(newsockfd,&camInst,2);
-          break;
-      }
       break;
 
     //Send image from camera
     case 6:
-      printf("Image requested from camera\n");
-      //Sending image
-      if( camSelected->On ){//Camera is turn on
-        //Get image        
-        Camera.grab();
-        fileLen = Camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_RGB );
-        unsigned char *data=new unsigned char[  Camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_RGB )];        
-        Camera.retrieve ( data,raspicam::RASPICAM_FORMAT_IGNORE );//get camera image
-        if( buffer[1] == 2 ){
-          
-          printf("Saving image in HypCam\n");
-
-          //Take file name
-          char tmpFileName[16+17];
-          snprintf(tmpFileName, 16+17, "tmpSnapshots/%lu.ppm", time(NULL));
-
-          //Save file
-          std::ofstream outFile ( tmpFileName, std::ios::binary );
-          outFile<<"P6\n"<<Camera.getWidth()<<" "<<Camera.getHeight()<<" 255\n";
-          outFile.write((char*)data,fileLen);
-          outFile.close();
-          camInst[0] = 1;
-          camInst[1] = 1;
-          n = write(newsockfd,&camInst,2);
-        }else{
-          //Send image as frame
-          std::string tmpImg( data, data+fileLen );
-          delete data;
-          printf("Sending image\n");
-          if( sendBigFrame( newsockfd, tmpImg ) ){
-            printf("Photogram sent\n");
-          }else{
-            printf("ERROR sending photo\n");
-          }
-        }
-      }else{
-        //Camera is turn off            
-        printf("ERROR: Camera is off\n");
-        fileLen = 0;
-        write(newsockfd,&fileLen,sizeof(unsigned int));
-        break;
-      }
- 
       break;
 
     //Require image from scratch
     //..
     case 7:
-	//Prepare memory
-	memset( reqImg, '\0', sizeof(strReqImg)  );		
-	memcpy( reqImg, frameReceived, sizeof(strReqImg) );
+		//Prepare memory
+		memset( reqImg, '\0', sizeof(strReqImg)  );		
+		memcpy( reqImg, frameReceived, sizeof(strReqImg) );
+		//Send ACK with camera status
+		buffer[1] = 1;
+		write(newsockfd,&buffer,2);
+		if( buffer[1] == 0 )break;
+		else{ 
+			//Get image
+			//..
+			printf("Making the snapshot by applying raspistill\n");
+			std::string fileName = "./tmpSnapshots/tmpImg.RGB888";
+			if( getRaspImg(reqImg,fileName) ){
+			  printf("Snapshot [OK]\n");
+			}else{
+			  printf("Snapshot[Fail]\n");
+			  break;
+			}
 
-	//Send ACK with camera status
-	//buffer[1] = ( openAndSetCamera( reqImg  ) )?1:0;
-	buffer[1] = 1;
-	write(newsockfd,&buffer,2);
-	if( buffer[1] == 0 )break;
-	else{ 
-		//Get image
-		//..
-		//Camera.grab();
-		//int fileLen = Camera.getImageTypeSize ( raspicam::RASPICAM_FORMAT_RGB );
-		//unsigned char *data=new unsigned char[ fileLen ];
-		//Camera.retrieve ( data,raspicam::RASPICAM_FORMAT_IGNORE );//get camera image		
-		//char tmpFileNameNot[] = "./tmpSnapshots/notCropped.ppm";
-		//funcSaveFile(tmpFileNameNot,(char*)data, fileLen, reqImg->imgCols, reqImg->imgRows);
-		
-		printf("Making the snapshot by applying raspistill\n");
-		std::string fileName = "./tmpSnapshots/tmpImg.RGB888";
-		if( getRaspImg(reqImg,fileName) ){
-		  printf("Snapshot [OK]\n");
-		}else{
-		  printf("Snapshot[Fail]\n");
-		  break;
+			//Send image as frame
+			//..
+			std::string tmpImg = file2String(fileName);
+			printf("size: %d\n",tmpImg.size());
+			if( sendBigFrame( newsockfd, tmpImg ) ){
+				printf("Photogram sent\n");
+			}else{
+				printf("ERROR sending photo\n");
+			}		
+
 		}
+    	break;
 
-		
-		
-		//Send image as frame
-		//..
-		//std::ifstream fileRead(fileName.c_str());
-		//std::string tmpImg(
-		//					std::istreambuf_iterator<char>(fileRead),
-		//					std::istreambuf_iterator<char>()
-		//				  );
-		std::string tmpImg = file2String(fileName);
-		printf("size: %d\n",tmpImg.size());
-		
-		
-		
-		//std::string tmpImg(data,data+fileLen);//Begin -to- End		
-		//printf("Sending image: \n", tmpImg.size());
-		if( sendBigFrame( newsockfd, tmpImg ) ){
-			printf("Photogram sent\n");
-		}else{
-			printf("ERROR sending photo\n");
-		}		
+	case 8:
+		//Prepare memory		
+		memset( reqImg, '\0', sizeof(strReqImg) );
+		memcpy( reqImg, frameReceived, sizeof(strReqImg) );
+		printf("Square: x(%d) y(%d) w(%d) h(%d)\n",reqImg->sqApSett.rectX,reqImg->sqApSett.rectY,reqImg->sqApSett.rectW,reqImg->sqApSett.rectH);
 
-		//Turn of the camera and release memo
-		//..
-		//delete[] data;
-		//Camera.release();
-	}
-	
-
+		//Send ACK with camera status
+		buffer[1] = 1;
+		write(newsockfd,&buffer,2);
+		if( buffer[1] == 0 )break;
+		else{
+			/* 
+			//Get diffracted image
+			//..			
+			printf("Making the snapshot by applying raspistill\n");
+			std::string fileNameDiff = "./tmpSnapshots/tmpImgDiff.RGB888";
+			reqImg->squApert = false;
+			reqImg->needCut	 = true;
+			if( getRaspImg(reqImg,fileNameDiff) ){
+			  printf("Snapshot diffraction [OK]\n");
+			}else{
+			  printf("Snapshot diffraction [Fail]\n");
+			  break;
+			}
+			*/
+			
+			
+			//Get square-aperture image
+			//..
+			printf("Making the square-aperture snapshot by applying raspistill\n");
+			std::string fileNameSqu = "./tmpSnapshots/tmpImgSqu.RGB888";
+			reqImg->squApert = true;
+			reqImg->needCut	 = true;
+			if( getRaspImg(reqImg,fileNameSqu) ){
+			  printf("Snapshot square-aperture [OK]\n");
+			}else{
+			  printf("Snapshot square-aperture [Fail]\n");
+			  break;
+			}		
+		}
     	break;
 
 
@@ -482,6 +376,8 @@ int main(int argc, char *argv[])
   printf("It finishes...\n");
   return 0;
 }
+
+
 
 std::string file2String( const std::string &fileName ){
 	std::ifstream t(fileName.c_str());
@@ -527,7 +423,7 @@ bool getRaspImg(strReqImg *reqImg, const std::string &fileName){
 	
 	//Concatenate raspistill command
 	//raspistill -q 100 -gc -ifx colourbalance -ifx denoise  -o test.RGB888 -t 8000 -ss 1000000 -roi x,y,w,d 
-	//..	
+	//..
 	std::string *raspistillCommand = genCommand(reqImg, fileName);
 	printf("Comm: %s\n",raspistillCommand->c_str());
 	//Prepare command as required
@@ -574,33 +470,60 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName){
 	//Denoise?
 	if(reqImg->raspSett.Denoise){
 		tmpCommand->append(" -ifx denoise");
+	}	
+	//Square Shuter speed
+	int shutSpeed = reqImg->raspSett.SquareShutterSpeed + reqImg->raspSett.SquareShutterSpeedSmall;
+	if(reqImg->squApert && shutSpeed>0)
+	{		
+		ss.str("");
+		ss<<shutSpeed;
+		tmpCommand->append(" -ss " + ss.str());
 	}
-	//Width
-	ss.str("");
-	ss<<reqImg->imgCols;
-	tmpCommand->append(" -w " + ss.str());
-	//Height
-	ss.str("");
-	ss<<reqImg->imgRows;
-	tmpCommand->append(" -h " + ss.str());
-	//Shuter speed
-	ss.str("");
-	ss<<reqImg->raspSett.ShutterSpeed;
-	tmpCommand->append(" -ss " + ss.str());
+	//Diffraction Shuter speed
+	shutSpeed = reqImg->raspSett.ShutterSpeed + reqImg->raspSett.ShutterSpeedSmall;
+	if(!reqImg->squApert && shutSpeed>0)
+	{
+		ss.str("");
+		ss<<shutSpeed;
+		tmpCommand->append(" -ss " + ss.str());
+	}
 	//Trigering timer
-	ss.str("");
-	ss<<(reqImg->raspSett.TriggerTime*1000);
-	tmpCommand->append(" -t " + ss.str());
+	if( reqImg->raspSett.TriggerTime > 0 )
+	{
+		ss.str("");
+		ss<<(reqImg->raspSett.TriggerTime*1000);
+		tmpCommand->append(" -t " + ss.str());
+	}
+	else
+	{
+		ss.str("");
+		ss<<250;//Milliseconds by default
+		tmpCommand->append(" -t " + ss.str());
+	}	
 	
 	//Crop image if neccesary
 	//..
-	if( reqImg->needCut ){
+	if( reqImg->needCut )
+	{
 		float x,y,w,d;	
 		//Normalization
-		x = (float)reqImg->sqApSett.rectX / (float)_BIG_WIDTH;
-		y = (float)reqImg->sqApSett.rectY / (float)_BIG_HEIGHT;
-		w = (float)reqImg->imgCols / (float)_BIG_WIDTH;
-		d = (float)reqImg->imgRows / (float)_BIG_HEIGHT;
+		if(reqImg->squApert)
+		{
+			x = (float)reqImg->sqApSett.rectX / (float)_BIG_WIDTH;
+			y = (float)reqImg->sqApSett.rectY / (float)_BIG_HEIGHT;
+			w = (float)reqImg->sqApSett.rectW / (float)_BIG_WIDTH;
+			d = (float)reqImg->sqApSett.rectH / (float)_BIG_HEIGHT;
+			//printf("Square: x(%.4f) y(%.4f) w(%.4f) h(%.4f)\n",x,y,w,d);
+			//printf("Square: x(%d) y(%d) w(%d) h(%d)\n",reqImg->sqApSett.rectX,reqImg->sqApSett.rectY,reqImg->sqApSett.rectW,reqImg->sqApSett.rectH);
+		}
+		else
+		{
+			x = (float)reqImg->diffArea.rectX / (float)_BIG_WIDTH;
+			y = (float)reqImg->diffArea.rectY / (float)_BIG_HEIGHT;
+			w = (float)reqImg->diffArea.rectW / (float)_BIG_WIDTH;
+			d = (float)reqImg->diffArea.rectH / (float)_BIG_HEIGHT;
+			printf("Diff: x(%.4f) y(%.4f) w(%.4f) h(%.4f)\n",x,y,w,d);
+		}
 		//Add region of interes to the raspistill command
 		tmpCommand->append(" -roi ");		
 		ss.str("");
@@ -615,6 +538,40 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName){
 		ss.str("");
 		ss<<d;
 		tmpCommand->append(ss.str());
+		//Width and Height
+		if(reqImg->squApert)
+		{
+			//Width
+			ss.str("");
+			ss<<reqImg->sqApSett.rectW;
+			tmpCommand->append(" -w " + ss.str());
+			//Height
+			ss.str("");
+			ss<<reqImg->sqApSett.rectH;
+			tmpCommand->append(" -h " + ss.str());
+		}
+		else
+		{
+			//Width
+			ss.str("");
+			ss<<reqImg->diffArea.rectW;
+			tmpCommand->append(" -w " + ss.str());
+			//Height
+			ss.str("");
+			ss<<reqImg->diffArea.rectH;
+			tmpCommand->append(" -h " + ss.str());
+		}
+	}
+	else
+	{
+		//Width
+		ss.str("");
+		ss<<reqImg->imgCols;
+		tmpCommand->append(" -w " + ss.str());
+		//Height
+		ss.str("");
+		ss<<reqImg->imgRows;
+		tmpCommand->append(" -h " + ss.str());
 	}
 	
 	//AWB
@@ -639,41 +596,6 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName){
 bool fileExists( const std::string& fileName ){
 	struct stat buffer;
 	return( stat(fileName.c_str(), &buffer) == 0 );
-}
-
-
-bool openAndSetCamera( strReqImg *reqImg ){
-	//Set camera
-	Camera.setWidth( reqImg->imgCols );
-	Camera.setHeight( reqImg->imgRows );
-	Camera.setBrightness ( reqImg->raspSett.Brightness );
-	Camera.setSharpness ( reqImg->raspSett.Sharpness );
-	Camera.setContrast ( reqImg->raspSett.Contrast );
-	Camera.setSaturation ( reqImg->raspSett.Saturation );
-	Camera.setShutterSpeed(reqImg->raspSett.ShutterSpeed );
-	Camera.setISO (reqImg->raspSett.ISO );
-	Camera.setVideoStabilization ( true );
-	Camera.setExposureCompensation ( reqImg->raspSett.ExposureCompensation);
-	//Camera.setFormat(reqImg->raspSett.Format);
-	Camera.setAWB_RB(reqImg->raspSett.Red, reqImg->raspSett.Green );
-
-	std::string tmpExposure;
-	std::string tmpAWB;
-	tmpExposure.assign( (char*)reqImg->raspSett.Exposure );
-	tmpAWB.assign( (char*)reqImg->raspSett.AWB );
-	Camera.setExposure ( getExposureFromString (tmpExposure ) );
-	Camera.setAWB( getAwbFromString ( tmpAWB ) );
-	
-
-
-	//Turn on camera pre-setted
-	if ( Camera.open() ) {
-		sleep(reqImg->stabSec);
-	}else{
-		printf("ERROR openning camera\n");
-		return false;
-	}   
-	return true;
 }
 
 bool sendBigFrame( int newsockfd, std::string bigFrame ){
@@ -935,35 +857,3 @@ void obtainIP(char* host)
 
 }
 
-
-
-raspicam::RASPICAM_EXPOSURE getExposureFromString ( std::string str ) {
-  if ( str=="OFF" ) return raspicam::RASPICAM_EXPOSURE_OFF;
-  if ( str=="AUTO" ) return raspicam::RASPICAM_EXPOSURE_AUTO;
-  if ( str=="NIGHT" ) return raspicam::RASPICAM_EXPOSURE_NIGHT;
-  if ( str=="NIGHTPREVIEW" ) return raspicam::RASPICAM_EXPOSURE_NIGHTPREVIEW;
-  if ( str=="BACKLIGHT" ) return raspicam::RASPICAM_EXPOSURE_BACKLIGHT;
-  if ( str=="SPOTLIGHT" ) return raspicam::RASPICAM_EXPOSURE_SPOTLIGHT;
-  if ( str=="SPORTS" ) return raspicam::RASPICAM_EXPOSURE_SPORTS;
-  if ( str=="SNOW" ) return raspicam::RASPICAM_EXPOSURE_SNOW;
-  if ( str=="BEACH" ) return raspicam::RASPICAM_EXPOSURE_BEACH;
-  if ( str=="VERYLONG" ) return raspicam::RASPICAM_EXPOSURE_VERYLONG;
-  if ( str=="FIXEDFPS" ) return raspicam::RASPICAM_EXPOSURE_FIXEDFPS;
-  if ( str=="ANTISHAKE" ) return raspicam::RASPICAM_EXPOSURE_ANTISHAKE;
-  if ( str=="FIREWORKS" ) return raspicam::RASPICAM_EXPOSURE_FIREWORKS;
-  return raspicam::RASPICAM_EXPOSURE_AUTO;
-}
-
-raspicam::RASPICAM_AWB getAwbFromString ( std::string str ) {
-  if ( str=="OFF" ) return raspicam::RASPICAM_AWB_OFF;
-  if ( str=="AUTO" ) return raspicam::RASPICAM_AWB_AUTO;
-  if ( str=="SUNLIGHT" ) return raspicam::RASPICAM_AWB_SUNLIGHT;
-  if ( str=="CLOUDY" ) return raspicam::RASPICAM_AWB_CLOUDY;
-  if ( str=="SHADE" ) return raspicam::RASPICAM_AWB_SHADE;
-  if ( str=="TUNGSTEN" ) return raspicam::RASPICAM_AWB_TUNGSTEN;
-  if ( str=="FLUORESCENT" ) return raspicam::RASPICAM_AWB_FLUORESCENT;
-  if ( str=="INCANDESCENT" ) return raspicam::RASPICAM_AWB_INCANDESCENT;
-  if ( str=="FLASH" ) return raspicam::RASPICAM_AWB_FLASH;
-  if ( str=="HORIZON" ) return raspicam::RASPICAM_AWB_HORIZON;
-  return raspicam::RASPICAM_AWB_AUTO;
-}
