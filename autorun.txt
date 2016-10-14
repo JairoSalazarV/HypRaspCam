@@ -19,7 +19,7 @@ case "$1" in
   start)
     echo "Starting RaspHypCam"
     # run application you want to start
-    /home/pi/Documents/RaspHypCam/RaspHypCam
+    sh /home/pi/Documents/RaspHypCam/autorun.sh
     ;;
   stop)
     echo "Stopping RaspHypCam"
