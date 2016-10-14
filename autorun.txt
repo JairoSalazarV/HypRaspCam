@@ -1,4 +1,4 @@
- #! /bin/sh
+#! /bin/sh
 # /etc/init.d/noip
 
 ### BEGIN INIT INFO
@@ -17,17 +17,17 @@
 # Carry out specific functions when asked to by the system
 case "$1" in
   start)
-    echo "Starting noip"
+    echo "Starting RaspHypCam"
     # run application you want to start
-    /usr/local/bin/noip2
+    /home/pi/Documents/RaspHypCam/RaspHypCam
     ;;
   stop)
-    echo "Stopping noip"
+    echo "Stopping RaspHypCam"
     # kill application you want to stop
-    killall noip2
+    killall RaspHypCam
     ;;
   *)
-    echo "Usage: /etc/init.d/noip {start|stop}"
+    echo "Usage: /etc/init.d/RaspHypCam {start|stop}"
     exit 1
     ;;
 esac
