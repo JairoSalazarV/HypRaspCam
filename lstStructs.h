@@ -132,6 +132,7 @@
         u_int8_t      TriggerTime;            // Seconds before to take a photo
         u_int8_t      Denoise;                // 0v1: Denoise efx
         u_int8_t      ColorBalance;           // 0v1: ColorBalance efx
+		u_int8_t      CameraMp;               // 5: 5Mp | 8: 8Mp
     }structRaspcamSettings;
 
     typedef struct squareAperture{
@@ -143,6 +144,20 @@
         int rectH;//Len
     }squareAperture;
 
+	typedef struct strSlideSettings
+    {
+        int x1;         //Slide
+        int y1;         //Slide
+        int rows1;      //Slide
+        int cols1;      //Slide
+        int x2;         //Difraction
+        int y2;         //Difraction
+        int rows2;      //Difraction
+        int cols2;      //Difraction
+        int speed;      //time lapse in ms, recomended at least 800
+        int duration;   //time in seconds of the total time snapshing
+    }strSlideSettings;
+    
     typedef struct strReqImg{
         unsigned char idMsg;
         unsigned char stabSec;
@@ -150,9 +165,12 @@
         int imgRows;
         bool needCut;
         bool squApert;
+        bool fullFrame;
+        bool isSlide;
         structRaspcamSettings raspSett;
         squareAperture sqApSett;
         squareAperture diffArea;
+        strSlideSettings slide;
     }strReqImg;
 
     typedef struct structSettings{

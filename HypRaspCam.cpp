@@ -1,5 +1,9 @@
 //11 August 2016 18:30
 //27 August 2016 morning
+//20 Marzo 2017: - Se agregó la validación de mensajes
+//				 - Lectura de imágenes y recorte de subimágenes
+
+
 #include <iostream>
 #include <pthread.h>
 #include <stdio.h>
@@ -35,8 +39,12 @@ bool getRaspImg(strReqImg *reqImg, const std::string& fileName);
 unsigned char *funcCropImg(unsigned char* original, int origW, int x1, int y1, int x2, int y2);
 std::string file2String( const std::string &fileName );
 bool funcSaveFile(char* fileName, char* data, int fileLen, int w, int h);
+std::string *genSLIDECommand(strReqImg *reqImg);
 std::string *genCommand(strReqImg *reqImg, const std::string& fileName);
+bool reqImgIsValid( strReqImg *reqImg );
 bool fileExists( const std::string& fileName );
+bool applyTimeLapseUsingRaspistill(strReqImg *reqImg);
+
 
 
 const unsigned int PORT  = 51717;
@@ -168,6 +176,7 @@ int main(int argc, char *argv[])
     //Extract the message and execute instruction identified
     printf("idMessage(%i) n(%i)\n",frameReceived->header.idMsg,n);
     //printf("Message(%c%c)\n",frameReceived->msg[0],frameReceived->msg[1]);
+    printf("\n");
     switch( frameReceived->header.idMsg ){
       //Sending cam settings
       case 1:
@@ -286,8 +295,12 @@ int main(int argc, char *argv[])
 		memset( reqImg, '\0', sizeof(strReqImg)  );		
 		memcpy( reqImg, frameReceived, sizeof(strReqImg) );
 		//Send ACK with camera status
-		buffer[1] = 1;
+		if( reqImgIsValid( reqImg ) )
+			buffer[1] = 1;
+		else
+			buffer[1] = 0;	
 		write(newsockfd,&buffer,2);
+		
 		if( buffer[1] == 0 )break;
 		else{ 
 			//Get image
@@ -356,11 +369,43 @@ int main(int argc, char *argv[])
 		}
     	break;
 
+	//
+    //Require slide-cube from scratch
+    //..
+    case 9:
+		//Prepare memory
+		memset( reqImg, '\0', sizeof(strReqImg)  );		
+		memcpy( reqImg, frameReceived, sizeof(strReqImg) );
+		
+		//Send ACK with camera status
+		if( reqImgIsValid( reqImg ) )
+			buffer[1] = 1;
+		else
+			buffer[1] = 0;	
+		write(newsockfd,&buffer,2);
+		
+		//Wait for instruction to start time lapse
+		n = read(newsockfd, buffer, frameBodyLen-1);
+		if (n < 0)
+		{
+			error("Sock: Before start time lapse");
+		}
+	
+		//Start time lapse and send ACK at the end of the proccess
+		if( applyTimeLapseUsingRaspistill( reqImg ) == true )
+			buffer[1] = 1;
+		else 
+			buffer[1] = 0;
+		write(newsockfd,&buffer,2);
+		
+		
+    	break;
 
     //Unrecognized instruction
     default:
       n = write(newsockfd,"Default",8);
-      if (n < 0){
+      if (n < 0)
+      {
         error("ERROR writing to socket");
       }
       holdon = 0;
@@ -377,6 +422,21 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+
+bool applyTimeLapseUsingRaspistill(strReqImg *reqImg)
+{
+	std::string *timeLapseCommand = genSLIDECommand(reqImg);
+	printf("Comm: %s\n",timeLapseCommand->c_str());
+			
+	/*
+	//Execute raspistill
+	FILE* pipe;
+	pipe = popen(timeLapseCommand->c_str(), "r");
+	pclose(pipe);
+	*/	
+	
+	return true;
+}
 
 
 std::string file2String( const std::string &fileName ){
@@ -455,7 +515,101 @@ bool getRaspImg(strReqImg *reqImg, const std::string &fileName){
 		
 }
 
-std::string *genCommand(strReqImg *reqImg, const std::string& fileName){
+bool reqImgIsValid( strReqImg *reqImg )
+{
+	//Validates image required size
+	if( reqImg->imgCols <= 0 )
+	{
+		printf("Width <= 0\n");
+		return false;
+	}	
+	if( reqImg->imgRows <= 0 )
+	{
+		printf("Height <= 0\n");
+		return false;
+	}	
+	
+	//Validates area of interes
+	if( reqImg->needCut == true )
+	{
+		printf("Cut required\n");
+		
+		if( reqImg->sqApSett.rectW <= 0 )
+		{
+			printf( "ROI W <= 0\n" );
+			return false;
+		}
+		if( reqImg->sqApSett.rectH <= 0 )
+		{
+			printf( "ROI H <= 0\n" );
+			return false;
+		}
+		if( reqImg->sqApSett.rectW < 0 )
+		{
+			printf( "ROI X < 0\n" );
+			return false;
+		}
+		if( reqImg->sqApSett.rectW < 0 )
+		{
+			printf( "ROI Y < 0\n" );
+			return false;
+		}
+	}
+	
+	//
+	if( reqImg->isSlide == true )
+	{
+		if( reqImg->slide.x1 < 0 ){printf( "x1 < 0\n" );return false;}
+		if( reqImg->slide.y1 < 0 ){printf( "y1 < 0\n" );return false;}
+		if( reqImg->slide.rows1 < 1 ){printf( "rows1 < 1\n" );return false;}
+		if( reqImg->slide.cols1 < 1 ){printf( "cols1 < 1\n" );return false;}
+		
+		if( reqImg->slide.x2 < 0 ){printf( "x2 < 0\n" );return false;}
+		if( reqImg->slide.y2 < 0 ){printf( "y2 < 0\n" );return false;}
+		if( reqImg->slide.rows2 < 1 ){printf( "rows2 < 1\n" );return false;}
+		if( reqImg->slide.cols2 < 1 ){printf( "cols2 < 1\n" );return false;}
+		
+		if( reqImg->slide.speed < 100 ){printf( "speed < 100\n" );return false;}
+		if( reqImg->slide.duration < 500 ){printf( "duration < 500\n" );return false;}
+	}
+		
+	
+	
+	
+	
+	return true;
+}
+
+std::string *genSLIDECommand(strReqImg *reqImg)
+{
+	//Initialize command
+	//..
+	std::string *tmpCommand = new std::string("raspistill -o ./timeLapseAutomatic/%d.png -t 5000 -tl 200");
+	std::ostringstream ss;
+	tmpCommand->append(" -n -q 100 -gc");
+	//Colour balance?
+	if(reqImg->raspSett.ColorBalance){
+		tmpCommand->append(" -ifx colourbalance");
+	}
+	//Denoise?
+	if(reqImg->raspSett.Denoise){
+		tmpCommand->append(" -ifx denoise");
+	}	
+	//Square Shuter speed
+	int shutSpeed = reqImg->raspSett.SquareShutterSpeed + reqImg->raspSett.SquareShutterSpeedSmall;
+	if( (reqImg->squApert && shutSpeed>0))
+	{		
+		ss.str("");
+		ss<<shutSpeed;
+		tmpCommand->append(" -ss " + ss.str());
+	}
+	
+	
+	return tmpCommand;
+}
+
+std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
+{
 	
 	//Initialize command
 	//..
@@ -473,7 +627,7 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName){
 	}	
 	//Square Shuter speed
 	int shutSpeed = reqImg->raspSett.SquareShutterSpeed + reqImg->raspSett.SquareShutterSpeedSmall;
-	if(reqImg->squApert && shutSpeed>0)
+	if( (reqImg->squApert && shutSpeed>0))
 	{		
 		ss.str("");
 		ss<<shutSpeed;
@@ -481,7 +635,10 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName){
 	}
 	//Diffraction Shuter speed
 	shutSpeed = reqImg->raspSett.ShutterSpeed + reqImg->raspSett.ShutterSpeedSmall;
-	if(!reqImg->squApert && shutSpeed>0)
+	if(
+		(!reqImg->squApert && shutSpeed>0) ||	//Whe is by parts
+		(reqImg->fullFrame  && shutSpeed>0)	//Whe is unique and shutter speed has been setted
+	)
 	{
 		ss.str("");
 		ss<<shutSpeed;
