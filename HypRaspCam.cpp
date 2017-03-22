@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
+//#include <dir.h> 
 #include <netinet/in.h>
 #include <ifaddrs.h>
 #include <netdb.h>
@@ -22,6 +23,7 @@
 #include <sys/stat.h>
 #include <sstream>
 #include <streambuf>
+//#include <fstream>
 
 #include <ctime>
 
@@ -44,6 +46,11 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName);
 bool reqImgIsValid( strReqImg *reqImg );
 bool fileExists( const std::string& fileName );
 bool applyTimeLapseUsingRaspistill(strReqImg *reqImg);
+//bool funcFolderExists( std::string folderPath );
+bool funcPathExists( std::string fileName );
+bool funcCreateFolder( std::string folderName );
+bool funcDeleteFolderRecursively( std::string folderName );
+bool funcClearFolder( std::string folderName );
 
 
 
@@ -68,7 +75,6 @@ int main(int argc, char *argv[])
   char camName[] = "IRis\0";
   FILE* pipe;
   std::string result;
-
 
   //Buffer
   char bufferComm[streamLen];
@@ -147,7 +153,7 @@ int main(int argc, char *argv[])
   
   
   
-  
+
   
   
   
@@ -398,6 +404,8 @@ int main(int argc, char *argv[])
 			buffer[1] = 0;
 		write(newsockfd,&buffer,2);
 		
+		//funcClearFolder( "borrarCarpeta" );
+		
 		
     	break;
 
@@ -421,7 +429,6 @@ int main(int argc, char *argv[])
   printf("It finishes...\n");
   return 0;
 }
-
 
 bool applyTimeLapseUsingRaspistill(strReqImg *reqImg)
 {
@@ -582,11 +589,22 @@ bool reqImgIsValid( strReqImg *reqImg )
 
 std::string *genSLIDECommand(strReqImg *reqImg)
 {
+	//
 	//Initialize command
 	//..
-	std::string *tmpCommand = new std::string("raspistill -o ./timeLapseAutomatic/%d.png -t 5000 -tl 200");
-	std::ostringstream ss;
+	std::string *tmpCommand = new std::string("raspistill -o ./timeLapseAutomatic/%d.png"); //5000 -tl 200");
+	std::ostringstream numberToString;
 	tmpCommand->append(" -n -q 100 -gc");
+	
+	//Add lapse (speed) and duration
+	numberToString.str("");
+	numberToString << " -t " << reqImg->slide.duration << " -tl " << reqImg->slide.speed;
+	tmpCommand->append( numberToString.str() );
+
+	
+	
+	
+	/*
 	//Colour balance?
 	if(reqImg->raspSett.ColorBalance){
 		tmpCommand->append(" -ifx colourbalance");
@@ -603,6 +621,7 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 		ss<<shutSpeed;
 		tmpCommand->append(" -ss " + ss.str());
 	}
+	*/
 	
 	
 	return tmpCommand;
@@ -1013,4 +1032,60 @@ void obtainIP(char* host)
     freeifaddrs(ifaddr);
 
 }
+
+bool funcPathExists( std::string fileName )
+{
+	FILE* fileAsked = fopen( fileName.c_str(), "r" );
+	if( fileAsked )
+	{
+		fclose( fileAsked );
+		return true;
+	}	
+	return false;
+}
+
+bool funcCreateFolder( std::string folderName )
+{
+	if( funcPathExists( folderName ) == true )
+	{
+		printf( "Cannot create folder (%s), folder exits\n", folderName.c_str() );		
+		return false;
+	}
+	else
+	{
+		std::string *tmpCommand = new std::string("mkdir -m777 ");
+		tmpCommand->append( folderName );		
+		system( tmpCommand->c_str() );
+	}
+	return true;
+}
+
+bool funcDeleteFolderRecursively( std::string folderName )
+{
+	if( funcPathExists( folderName ) == false )
+	{
+		printf( "Cannot delete folder (%s), folder does not exits\n", folderName.c_str() );		
+		return false;
+	}
+	else
+	{
+		std::string *tmpCommand = new std::string("rm -r ");
+		tmpCommand->append( folderName );		
+		system( tmpCommand->c_str() );
+	}
+	return true;
+}
+
+bool funcClearFolder( std::string folderName )
+{
+	if( funcPathExists( folderName ) == true )
+		if( funcDeleteFolderRecursively( folderName ) == false )
+			return false;
+	return funcCreateFolder( folderName );	
+}
+
+
+
+
+
 
