@@ -52,6 +52,12 @@
         //int h;
     }customRectParameters;
     */
+      
+    
+    typedef struct strNumSlideImgs{
+        unsigned char idMsg;	// Id instruction
+        int  numImgs;			// Number of images generated
+    }strNumSlideImgs;
 
     typedef struct linearRegresion{
         float a;
@@ -203,6 +209,11 @@
         float y;
         float z;
     }CIELab;
+    
+    typedef struct strReqSubframe{
+		int posIni;
+		int len;
+	}strReqSubframe;
 
     const unsigned int streamLen = sizeof(frameStruct);
 

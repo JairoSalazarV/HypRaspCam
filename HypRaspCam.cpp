@@ -29,6 +29,13 @@
 
 #include "lstStructs.h"
 
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #define NUM_THREADS     5
 
 void *sender(void *arg);
@@ -45,13 +52,22 @@ std::string *genSLIDECommand(strReqImg *reqImg);
 std::string *genCommand(strReqImg *reqImg, const std::string& fileName);
 bool reqImgIsValid( strReqImg *reqImg );
 bool fileExists( const std::string& fileName );
-bool applyTimeLapseUsingRaspistill(strReqImg *reqImg);
+int applyTimeLapseUsingRaspistill(strReqImg *reqImg);
 //bool funcFolderExists( std::string folderPath );
 bool funcPathExists( std::string fileName );
 bool funcCreateFolder( std::string folderName );
 bool funcDeleteFolderRecursively( std::string folderName );
 bool funcClearFolder( std::string folderName );
-
+void startTimLapse(int newsockfd, strReqImg *reqImg);
+int startGenerateSlideCube(int newsockfd, strReqImg *reqImg);
+uint8_t* subimage( int x1, int y1, int croppedRows, int croppedCols, uint8_t* img, int imgRows, int imgCols );
+bool cropAndTransmitSlide( std::string* tmpImgName, int newsockfd, strReqImg *reqImg );
+int funcGenericSendFrame( int newsockfd, u_int8_t* frame, int lenToSend );
+int funcSendOneMessage( int newsockfd, void* frame, int lenToSend );
+strReqSubframe* readSubframeRequested( int newsockfd, strReqSubframe* subframeReq );
+int funcSendERROR( int newsockfd, u_int8_t ID );
+int funcSendACK( int newsockfd, u_int8_t ID );
+void funcMessage( std::string msg );
 
 
 const unsigned int PORT  = 51717;
@@ -379,34 +395,26 @@ int main(int argc, char *argv[])
     //Require slide-cube from scratch
     //..
     case 9:
-		//Prepare memory
+		//Order message
 		memset( reqImg, '\0', sizeof(strReqImg)  );		
 		memcpy( reqImg, frameReceived, sizeof(strReqImg) );
 		
-		//Send ACK with camera status
+		//Verify valid message
 		if( reqImgIsValid( reqImg ) )
-			buffer[1] = 1;
-		else
-			buffer[1] = 0;	
-		write(newsockfd,&buffer,2);
-		
-		//Wait for instruction to start time lapse
-		n = read(newsockfd, buffer, frameBodyLen-1);
-		if (n < 0)
 		{
-			error("Sock: Before start time lapse");
-		}
-	
-		//Start time lapse and send ACK at the end of the proccess
-		if( applyTimeLapseUsingRaspistill( reqImg ) == true )
+			//Send ACK with camera status OK
 			buffer[1] = 1;
-		else 
+			write(newsockfd,&buffer,2);
+			
+			//Start time lapse process
+			startTimLapse( newsockfd, reqImg );
+		}
+		else
+		{
+			//Send ACK with camera status ERROR
 			buffer[1] = 0;
-		write(newsockfd,&buffer,2);
-		
-		//funcClearFolder( "borrarCarpeta" );
-		
-		
+			write(newsockfd,&buffer,2);
+		}
     	break;
 
     //Unrecognized instruction
@@ -430,19 +438,42 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-bool applyTimeLapseUsingRaspistill(strReqImg *reqImg)
+int applyTimeLapseUsingRaspistill(strReqImg *reqImg)
 {
+	//
+	// RETURN: number of imagery generated
+	//
+	
+	//Prepare folder container
+	funcClearFolder( "tmpTimeLapse" );
+	
+	//Generate console command
 	std::string *timeLapseCommand = genSLIDECommand(reqImg);
 	printf("Comm: %s\n",timeLapseCommand->c_str());
 			
-	/*
-	//Execute raspistill
+	//Execute command generated
 	FILE* pipe;
 	pipe = popen(timeLapseCommand->c_str(), "r");
 	pclose(pipe);
-	*/	
 	
-	return true;
+	//Count imagery generated
+	int i, numImgs, expectedNumImgs;
+	std::ostringstream intToStr; 
+	std::string tmpFileName;
+	numImgs 		= 0;
+	expectedNumImgs = ceil( (float)reqImg->slide.duration / (float)reqImg->slide.speed );
+	for( i=1; i<=expectedNumImgs; i++ )
+	{
+		intToStr.str("");
+		intToStr << i;		
+		tmpFileName = "./tmpTimeLapse/" + intToStr.str() + ".png";
+		if( funcPathExists( tmpFileName ) == true )
+		{
+			numImgs++;
+		}
+	}
+	printf("Aquired imagery: %d of %d\n",numImgs,expectedNumImgs);
+	return numImgs;
 }
 
 
@@ -592,7 +623,7 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	//
 	//Initialize command
 	//..
-	std::string *tmpCommand = new std::string("raspistill -o ./timeLapseAutomatic/%d.png"); //5000 -tl 200");
+	std::string *tmpCommand = new std::string("raspistill -o ./tmpTimeLapse/%d.png"); //5000 -tl 200");
 	std::ostringstream numberToString;
 	tmpCommand->append(" -n -q 100 -gc");
 	
@@ -1084,8 +1115,468 @@ bool funcClearFolder( std::string folderName )
 	return funcCreateFolder( folderName );	
 }
 
+void startTimLapse(int newsockfd, strReqImg *reqImg)
+{
+	int n;
+	strNumSlideImgs strNumImgs;
+	char buffer[frameBodyLen];
+	
+	//Wait for instruction to start time lapse
+	n = read(newsockfd, buffer, frameBodyLen-1);
+	if (n < 0)
+	{
+		error("Sock: Before start time lapse");
+	}
+
+	//Start time lapse and send ACK with the number of images generated	
+	strNumImgs.idMsg 	= buffer[0];
+	strNumImgs.numImgs	= applyTimeLapseUsingRaspistill( reqImg );
+	n = sizeof(strNumSlideImgs);
+	memcpy(buffer,&strNumImgs,n);
+	write(newsockfd,&buffer,n+1);
+	
+	//Receive instruction acording to the number of images generated
+	//1:Enought images and create the cube 0:finish with error
+	n = read(newsockfd, buffer, frameBodyLen-1);
+	if (n < 0)
+	{
+		error("Sock: Before start time lapse");
+	}
+	if( buffer[0] == '1' )
+	{
+		std::cout << "Data-cube generatios process started" << std::endl;
+		startGenerateSlideCube( newsockfd, reqImg);
+	}
+	else
+	{
+		std::cout << "Time lapse process finished" << std::endl;
+	}
+}
+
+int startGenerateSlideCube(int newsockfd, strReqImg *reqImg)
+{
+	//std::cout << "startGenerateSlideCube" << std::endl;
+	
+	int i, n, expectedN;
+	std::string* tmpImgName = new std::string();
+	std::ostringstream ss;
+	char buffer[frameBodyLen];
+	strNumSlideImgs strNumImgs;
+	
+	expectedN = ceil( (float)reqImg->slide.duration / (float)reqImg->slide.speed );
+	expectedN = 1;
+	for( i=1; i<=expectedN; i++ )
+	{
+		//Read next image to validate
+		n = read(newsockfd, buffer, frameBodyLen);
+		memcpy(&strNumImgs,buffer,n);
+					
+		//Send ACK with 1 if image exists and 0 otherwise
+		ss.str("");
+		ss << i;
+		tmpImgName->assign("");
+		tmpImgName->append("./tmpTimeLapse/");
+		tmpImgName->append(ss.str());
+		tmpImgName->append(".png");
+		
+		memset(buffer,0,frameBodyLen);
+		buffer[0] = ( funcPathExists( tmpImgName->c_str() ) == true )?1:0;
+		//printf("%s \nEnviando %d buffer[0] = %d\n",tmpImgName->c_str(),i,buffer[0]);
+		//fflush(stdout);
+		write(newsockfd,buffer,2);		
+		if( buffer[0] == 1 )
+		{
+			std::cout << "Cropping and transmitting image " << i << "..." << std::endl;
+			cropAndTransmitSlide( tmpImgName, newsockfd, reqImg );			
+		}	
+	}	
+	std::cout << "Slide-Cube sent" << std::endl;
+	fflush(stdout);
+	//delete[] tmpImgName;
 
 
+	return 1;
+}
 
 
+bool cropAndTransmitSlide( std::string* tmpImgName, int newsockfd, strReqImg *reqImg )
+{
+	//std::cout << "cropAndTransmitSlide" << std::endl;
+	//
+	//Crop slide and diffraction areas and put all together into a single array
+	//(cropImgTrans)
+	//
+	int imgCols, imgRows, bpp;
+	int x1, y1, rows1, cols1;
+	int x2, y2, rows2, cols2;
+	
+	//Received parameters
+	x1 		= reqImg->slide.x1;			x2 		= reqImg->slide.x2;
+	y1 		= reqImg->slide.y1;			y2 		= reqImg->slide.y2;
+	rows1 	= reqImg->slide.rows1;		rows2 	= reqImg->slide.rows2;
+	cols1 	= reqImg->slide.cols1;		cols2 	= reqImg->slide.cols2;
+	
+	//Crop imagery
+	/*
+	uint8_t* tmpImg 		= stbi_load(tmpImgName->c_str(), &imgCols, &imgRows, &bpp, 3);	
+	uint8_t* croppedSlide 	= subimage( x1, y1, rows1, cols1, tmpImg, imgRows, imgCols );
+	uint8_t* croppedDiff 	= subimage( x2, y2, rows2, cols2, tmpImg, imgRows, imgCols );
+	*/
+	uint8_t* croppedSlide 	= stbi_load("croppedSlide.png", &cols1, &rows1, &bpp, 3);
+	uint8_t* croppedDiff 	= stbi_load("croppedDiff.png", &cols2, &rows2, &bpp, 3);
+	
 
+	//printf( "img: %s (R:%d,C:%d), Uno(x1:%d,y1:%d,rows1:%d,cols1:%d)\n",tmpImgName->c_str(),imgRows,imgCols,x1,y1,rows1,cols1 );
+	//printf( "img: %s (R:%d,C:%d), Uno(x1:%d,y1:%d,rows1:%d,cols1:%d)\n",tmpImgName->c_str(),imgRows,imgCols,x2,y2,rows2,cols2 );
+	
+	/*
+	int cropR = 600;
+	int cropC = 1500;
+	int width, height;
+	uint8_t* rgb_image = stbi_load(tmpImgName->c_str(), &width, &height, &bpp, 3);	
+	uint8_t* croppedImg = subimage( 200, 700, cropR, cropC, rgb_image, height, width );
+	stbi_write_png("exampleCropped.png", cropC, cropR, 3, croppedImg, cropC*3);
+	*/
+
+	//Merge cropped imagery into a single array
+	int slideLen 			= (rows1*cols1*3);
+	int diffLen				= (rows2*cols2*3);
+	int totalLen			= slideLen + diffLen;
+	uint8_t* cropImgTrans 	= (uint8_t*)malloc(totalLen);
+	memcpy( &cropImgTrans[0], croppedSlide, slideLen );
+	memcpy( &cropImgTrans[slideLen], croppedDiff, diffLen );
+	
+	//Save image
+	//stbi_write_png("croppedSlide.png", cols1, rows1, 3, croppedSlide, cols1*3);
+	//stbi_write_png("croppedDiff.png", cols2, rows2, 3, croppedDiff, cols2*3);
+	//stbi_write_png("allTogether.png", (cols1+cols2), rows1, 3, cropImgTrans, (cols1+cols2)*3);
+	
+	//
+	//Transmit image
+	//
+	funcGenericSendFrame( newsockfd, cropImgTrans, totalLen );
+	
+	//delete[] tmpImg;
+	delete[] croppedSlide;
+	delete[] croppedDiff;
+	delete[] cropImgTrans;	
+	
+	//funcMessage("termina: cropAndTransmitSlide");
+	
+	return true;
+}
+
+uint8_t* subimage( int x1, int y1, int croppedRows, int croppedCols, uint8_t* img, int imgRows, int imgCols )
+{ 
+	
+	uint8_t* croppedImg = (uint8_t*)malloc(croppedRows*croppedCols*3);
+	
+	if( 
+		croppedRows < 1 || croppedCols < 1 || 
+		x1 > imgCols 	|| x1 < 0 || 
+		y1 > imgRows 	|| y1 < 0
+	)
+	{
+		printf("Crop coordinates are out of bounds \n");
+		if( croppedRows < 1 )
+			funcMessage( "croppedRows < 1" );
+		if( croppedCols < 1 )
+			funcMessage( "croppedCols < 1" );
+		if( x1 > imgCols )
+			funcMessage( "x1 > imgCols" );
+		if( x1 < 0 )
+			funcMessage( "x1 < 0" );
+		if( y1 > imgRows )
+			funcMessage( "y1 > imgRows" );
+		if( y1 < 0 )
+			funcMessage( "y1 < 0" );
+		
+		
+		return croppedImg;
+	}
+
+	int beforeX1	= (x1>0)?x1:0;
+	int afterX2 	= ((x1+croppedCols)<imgCols)?imgCols-(x1+croppedCols):0;
+	int beforeY1	= (y1>0)?y1-1:0;
+	int step		= beforeX1 + afterX2;
+	
+	//printf( "img(%d x %d) | cropped(%d x %d) beforeX1: %d, afterX2: %d, step: %d\n", imgRows, imgCols, croppedRows, croppedCols,  beforeX1, afterX2, step );
+	
+	int r, c;
+	uint8_t *ptr, *cropPtr;
+	
+	cropPtr = &croppedImg[0];
+	ptr		= &img[0];
+	ptr	   += ((beforeY1 * imgCols) + beforeX1)*3;
+
+	for( r=0; r<croppedRows; r++ )
+	{
+		memcpy( cropPtr, ptr, croppedCols*3 );
+		ptr 	+= imgCols*3;
+		cropPtr	+= croppedCols*3;
+	}
+	
+	return croppedImg;
+
+}
+
+
+int funcGenericSendFrame( int newsockfd, u_int8_t* frame, int lenToSend )
+{
+	//std::cout << "funcGenericSendFrame" << std::endl;
+	
+	//Send frameLen and number of messages to send
+	int numMsgs = ceil( (float)lenToSend / (float)frameBodyLen );
+	
+	//u_int8_t* internFrame = (u_int8_t*)frame;
+	
+	funcSendOneMessage( newsockfd, (void*)&lenToSend, sizeof(int) );
+
+	funcSendOneMessage( newsockfd, (void*)&numMsgs, sizeof(int) );
+	
+	//frameBodyLen=1024
+	//funcMessage("\n\nframeLen and numMsgs sent");
+	
+	//Send frame
+	int i, n, framePos;
+	i 		 = 0;
+	
+	//Prepare to read first request	
+	strReqSubframe* subframeReq = (strReqSubframe*)malloc(sizeof(strReqSubframe));
+	subframeReq->posIni 		= 0;
+	subframeReq->len			= frameBodyLen;
+	//funcMessage("Ready to send frame");
+	subframeReq = readSubframeRequested( newsockfd, subframeReq );
+	//printf("Begining request: pos(%d) len(%d)\n",subframeReq->posIni,subframeReq->len);
+	if( 
+		subframeReq->posIni < 0 || 
+		subframeReq->len < 1 	|| 
+		subframeReq->posIni > lenToSend 
+	)
+		funcSendERROR(newsockfd,0);
+	else
+	{	
+		//Read the rest of the frame
+		while( subframeReq->posIni <= lenToSend )
+		{
+			//funcMessage("Entering to the WHILE");
+			
+			//Validate correctnes of the parameters ans send ACK-ERROR
+			if( subframeReq->posIni >= 0 && subframeReq->len >= 1 )
+			{			
+				//Notify, parameters correct
+				funcSendACK(newsockfd,2);
+				//funcMessage("ACK sent");
+				
+				//Send subframe requested
+				funcSendOneMessage( newsockfd, &frame[subframeReq->posIni], subframeReq->len );
+				//funcMessage("One message sent");
+				
+				//Display status (this is removable)			
+				//std::cout << "framePos: " << subframeReq->posIni << " len: " << subframeReq->len << " i: " << i << std::endl;
+			}
+			else
+			{
+				//funcMessage("Check if scape requeste was received");
+				
+				//Check if is the scape instruction
+				if( subframeReq->len == -6543 )
+				{
+					//funcMessage("Scape requested");
+					//sleep(1);
+					funcSendACK(newsockfd,5);
+					return 1;
+				}
+				else
+				{
+					//funcMessage("Parameters NOT correct");
+				
+					//Notify, error receiving instruction parameters
+					std::cout << "ERROR receiving parameters at i: " << i << std::endl;
+					funcSendERROR(newsockfd,2);
+				}
+			}
+			
+			i++;
+			
+			//Read frame requested, validate this, and send ACK if all correct
+			//funcMessage("Reading new parameters");
+			subframeReq = readSubframeRequested( newsockfd, subframeReq );
+			//printf("New: pos(%d) len(%d) i(%i)\n",subframeReq->posIni,subframeReq->len,i);
+			//fflush(stdout);
+
+		}
+		
+	}
+	
+	
+	
+	delete[] subframeReq;
+
+	return 1;
+}
+
+void funcMessage( std::string msg )
+{
+	std::cout << msg << std::endl;
+	fflush(stdout);
+}
+
+strReqSubframe* readSubframeRequested( int newsockfd, strReqSubframe* subframeReq )
+{
+	subframeReq->posIni = 0;
+	subframeReq->len	= 0;
+	int structSize		= sizeof(strReqSubframe)+1;
+	
+	//Prepare buffer
+	int n;
+	char buffer[structSize];
+	memset(buffer,'\0',structSize);
+	
+	//Wait for request
+	n = read(newsockfd, buffer, structSize);
+	if( n < 0 )
+		return subframeReq;//0's filled
+	//std::cout << "Requiring parameters, n: " << n << std::endl;
+	
+	//Save parameters acquired
+	memcpy(subframeReq,buffer,structSize-1);
+	
+	return subframeReq;
+}
+
+int funcSendOneMessage( int newsockfd, void* frame, int lenToSend )
+{
+	int n;
+	
+	//Send message
+	n = write(newsockfd,frame,lenToSend+1);
+	
+	//If message sent complete
+	if( n == lenToSend+1 )
+		return n;
+	
+	//Return error sending message
+	return 0;
+}
+
+int funcSendACK( int newsockfd, u_int8_t ID )
+{
+	//funcMessage("funcSendACK");
+	
+	int n;
+	u_int8_t buffer[2];
+	buffer[0] = 1;
+	buffer[1] = ID;
+	
+	//printf("buffer[0](%d) buffer[1](%d)\n",buffer[0],buffer[1]);
+	
+	//Send ACK message
+	n = write(newsockfd,&buffer[0],3);
+	
+	//If message sent complete
+	if( n == 3 )
+	{
+		//printf("n(%d)\n",n);
+		return 1;
+	}
+	
+	//Return error sending message
+	return 0;
+}
+
+int funcSendERROR( int newsockfd, u_int8_t ID )
+{
+	funcMessage("funcSendERROR");
+	
+	int n;
+	u_int8_t buffer[2];
+	buffer[0] = 0;
+	buffer[1] = ID;
+	
+	//Send ACK message
+	n = write(newsockfd,&buffer[0],3);
+	
+	//If message sent complete
+	if( n == 3 )
+	{
+		printf("n(%d)\n",n);
+		return 1;
+	}
+	
+	//Return error sending message
+	return 0;
+}
+
+
+/*
+ * //printf("Inside sendBigFrame\n");
+
+  //get file properties
+  std::string result;
+  frameStruct *frame2Send = (frameStruct *)malloc(sizeof(frameStruct));
+  //infile.open("yo.jpg", std::ifstream::binary);
+  //infile.seekg (0,infile.end);
+  unsigned int fileLen;
+  char buffer[frameBodyLen];
+  int i, n, aux;
+
+  //printf("Len sent\n");
+  fileLen = bigFrame.size();
+  //infile.seekg (0);
+  if( fileLen < 1 ){
+    //Prepare message
+    result.assign("Error reading file");
+    frame2Send->header.idMsg        = (char)3;  
+    frame2Send->header.consecutive  = 1;
+    frame2Send->header.bodyLen      = result.size();
+    bzero(frame2Send->msg,frameBodyLen);        
+    std::copy(result.begin(), result.end(), frame2Send->msg);
+    unsigned int tmpFrameLen = sizeof(frameHeader)+frame2Send->header.bodyLen;
+    n = write(newsockfd,frame2Send,tmpFrameLen);        
+    if (n < 0){
+      error("ERROR writing to socket");
+    }
+  }else{
+
+    //Send Len
+    //printf("fileLen: %i\n", fileLen);
+    n = write(newsockfd,&fileLen,sizeof(unsigned int));
+    if (n < 0){
+      error("ERROR writing to socket");      
+    }
+    //printf("Len sent\n");
+
+    //Get file request
+    //printf("Reading\n");
+    n = read(newsockfd, buffer, frameBodyLen-1);
+    if (n < 0){
+      error("ERROR reading from socket");
+    }
+    //printf("File requested\n");
+
+    //Send file
+    aux = floor( (float)fileLen / (float)frameBodyLen );
+    aux = ((aux*frameBodyLen)<fileLen)?aux+1:aux;
+    printf("numMsgs: %i - frameBodyLen: \n",aux,frameBodyLen);
+    for(i=1; i<=aux; i++){
+      //Send part of the file
+      bzero(buffer,frameBodyLen);
+      memcpy( buffer, &bigFrame[(i-1)*frameBodyLen], frameBodyLen );
+      n = write(newsockfd,buffer,frameBodyLen);
+      if (n < 0){
+        error("ERROR writing to socket");
+      }
+      //Get next part requesst
+      n = read(newsockfd, buffer, frameBodyLen-1);
+      if (n < 0){
+        error("ERROR reading from socket");
+      }
+    }
+  }
+  //infile.close();
+
+  //printf("bigFrame finish\n");
+  return true;
+ * 
+ * */
