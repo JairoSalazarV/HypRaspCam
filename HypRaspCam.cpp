@@ -68,6 +68,8 @@ strReqSubframe* readSubframeRequested( int newsockfd, strReqSubframe* subframeRe
 int funcSendERROR( int newsockfd, u_int8_t ID );
 int funcSendACK( int newsockfd, u_int8_t ID );
 void funcMessage( std::string msg );
+int checkIfRequestedFileExists( int sockfd, strReqFileInfo* reqFileInfo );
+void sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo );
 
 
 const unsigned int PORT  = 51717;
@@ -80,7 +82,8 @@ int main(int argc, char *argv[])
   int i = 0;
  
   //Define variables
-  strReqImg *reqImg 	= (strReqImg*)malloc(sizeof(strReqImg));
+  strReqImg *reqImg 			= (strReqImg*)malloc(sizeof(strReqImg));
+  strReqFileInfo* reqFileInfo 	= (strReqFileInfo*)malloc(sizeof(strReqFileInfo));
   //strReqImg *reqImgSqu 	= (strReqImg*)malloc(sizeof(strReqImg));
   
   //Obtain the IP address
@@ -416,6 +419,15 @@ int main(int argc, char *argv[])
 			write(newsockfd,&buffer,2);
 		}
     	break;
+	//
+    //Response if file exists
+    //..
+    case 10:
+		//Order message		
+		memset( reqFileInfo, '\0', sizeof(reqFileInfo)  );		
+		memcpy( reqFileInfo, frameReceived, n );
+		checkIfRequestedFileExists( newsockfd, reqFileInfo );
+    	break;
 
     //Unrecognized instruction
     default:
@@ -431,11 +443,80 @@ int main(int argc, char *argv[])
 
     
   }
+  
+  delete[] reqImg;
+  delete[] reqFileInfo;
 
   close(newsockfd);
   close(sockfd);
   printf("It finishes...\n");
   return 0;
+}
+
+int checkIfRequestedFileExists( int sockfd, strReqFileInfo* reqFileInfo )
+{	
+	//Check if file exists and send ACK or ERROR
+	
+	//printf( "Len(%d) charFileName: %s\n", reqFileInfo->fileNameLen, reqFileInfo->fileName );
+	//fflush(stdout);
+
+	//Check if file exists
+	std::string internFileName;
+	internFileName.assign( reqFileInfo->fileName );
+	
+	printf( "Client asked for: %s\n", internFileName.c_str() );
+	fflush(stdout);
+	
+	if( fileExists( internFileName ) )
+	{
+		funcMessage("File exists");
+		funcSendACK( sockfd, 101 );
+		
+		
+		
+		//Send image as frame
+		//..
+		std::string tmpImg = file2String(internFileName);
+		printf("size: %d\n",tmpImg.size());
+		if( sendBigFrame( sockfd, tmpImg ) ){
+			printf("Photogram sent\n");
+		}else{
+			printf("ERROR sending photo\n");
+		}	
+		
+		
+	}
+	else
+	{
+		funcMessage("File DOES NOT exists");
+		funcSendERROR( sockfd, 101 );
+	}
+	
+	return -1;
+}
+
+void sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo )
+{	
+	//It assumes that file exists
+	// Recomendation: Client must to use checkIfRequestedFileExists
+	//				  invoque this function
+	//Send the fileName requested
+	
+	
+	//Send image as frame
+	//..
+	
+	
+	std::string tmpImg = file2String(reqFileInfo->fileName);
+	printf("size: %d\n",tmpImg.size());
+	if( sendBigFrame( sockfd, tmpImg ) ){
+		printf("Photogram sent\n");
+	}else{
+		printf("ERROR sending photo\n");
+	}
+	
+	
+
 }
 
 int applyTimeLapseUsingRaspistill(strReqImg *reqImg)
@@ -533,14 +614,13 @@ bool getRaspImg(strReqImg *reqImg, const std::string &fileName){
 	//..
 	//Remove file if exists	
 	if(fileExists(fileName)){
-		remove(fileName.c_str());	
+		//remove(fileName.c_str());	
 	}
 	//Execute raspistill
-	FILE* pipe;
-	//pipe = popen(tmpComm, "r");
-	pipe = popen(raspistillCommand->c_str(), "r");
-	pclose(pipe);
-	//delete[] tmpComm;
+	//FILE* pipe;
+	//pipe = popen(raspistillCommand->c_str(), "r");
+	//pclose(pipe);
+
 	
 	//Verify if it was created the snapshot
 	//..
@@ -836,15 +916,15 @@ bool sendBigFrame( int newsockfd, std::string bigFrame ){
   }else{
 
     //Send Len
-    //printf("fileLen: %i\n", fileLen);
+    printf("fileLen: %i\n", fileLen);
     n = write(newsockfd,&fileLen,sizeof(unsigned int));
     if (n < 0){
       error("ERROR writing to socket");      
     }
-    //printf("Len sent\n");
+    printf("Len sent\n");
 
     //Get file request
-    //printf("Reading\n");
+    printf("Reading\n");
     n = read(newsockfd, buffer, frameBodyLen-1);
     if (n < 0){
       error("ERROR reading from socket");
@@ -852,22 +932,23 @@ bool sendBigFrame( int newsockfd, std::string bigFrame ){
     //printf("File requested\n");
 
     //Send file
-    aux = floor( (float)fileLen / (float)frameBodyLen );
-    aux = ((aux*frameBodyLen)<fileLen)?aux+1:aux;
-    printf("numMsgs: %i - frameBodyLen: \n",aux,frameBodyLen);
+    aux = ceil( (float)fileLen / (float)frameBodyLen );
+    //aux = ((aux*frameBodyLen)<fileLen)?aux+1:aux;
+    printf("numMsgs: %i - frameBodyLen: %d \n",aux,frameBodyLen);
     for(i=1; i<=aux; i++){
-      //Send part of the file
-      bzero(buffer,frameBodyLen);
-      memcpy( buffer, &bigFrame[(i-1)*frameBodyLen], frameBodyLen );
-      n = write(newsockfd,buffer,frameBodyLen);
-      if (n < 0){
-        error("ERROR writing to socket");
-      }
-      //Get next part requesst
-      n = read(newsockfd, buffer, frameBodyLen-1);
-      if (n < 0){
-        error("ERROR reading from socket");
-      }
+		//printf("Msg: %d\n",i);
+		//Send part of the file
+		bzero(buffer,frameBodyLen);
+		memcpy( buffer, &bigFrame[(i-1)*frameBodyLen], frameBodyLen );
+		n = write(newsockfd,buffer,frameBodyLen);
+		if (n < 0){
+			error("ERROR writing to socket");
+		}
+		//Get next part requesst
+		n = read(newsockfd, buffer, frameBodyLen-1);
+		if (n < 0){
+			error("ERROR reading from socket");
+		}
     }
   }
   //infile.close();
@@ -1246,6 +1327,9 @@ bool cropAndTransmitSlide( std::string* tmpImgName, int newsockfd, strReqImg *re
 	memcpy( &cropImgTrans[0], croppedSlide, slideLen );
 	memcpy( &cropImgTrans[slideLen], croppedDiff, diffLen );
 	
+	printf("slideLen(%d), diffLen(%d), totalLen(%d)",slideLen,diffLen,totalLen);
+	fflush(stdout);
+	
 	//Save image
 	//stbi_write_png("croppedSlide.png", cols1, rows1, 3, croppedSlide, cols1*3);
 	//stbi_write_png("croppedDiff.png", cols2, rows2, 3, croppedDiff, cols2*3);
@@ -1487,7 +1571,7 @@ int funcSendACK( int newsockfd, u_int8_t ID )
 
 int funcSendERROR( int newsockfd, u_int8_t ID )
 {
-	funcMessage("funcSendERROR");
+	//funcMessage("funcSendERROR");
 	
 	int n;
 	u_int8_t buffer[2];

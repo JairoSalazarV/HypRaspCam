@@ -52,7 +52,13 @@
         //int h;
     }customRectParameters;
     */
-      
+    
+    
+    typedef struct strReqFileInfo{
+        u_int8_t 	idMsg;
+        int			fileNameLen;
+        char		fileName[frameBodyLen - sizeof(u_int8_t) - sizeof(int)];
+    }strReqFileInfo;
     
     typedef struct strNumSlideImgs{
         unsigned char idMsg;	// Id instruction
