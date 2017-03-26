@@ -1245,14 +1245,10 @@ int startGenerateSlideCube(int newsockfd, strReqImg *reqImg)
 	strNumSlideImgs strNumImgs;
 	
 	expectedN = ceil( (float)reqImg->slide.duration / (float)reqImg->slide.speed );
-	expectedN = 1;
+	//expectedN = 1;
 	for( i=1; i<=expectedN; i++ )
 	{
-		//Read next image to validate
-		n = read(newsockfd, buffer, frameBodyLen);
-		memcpy(&strNumImgs,buffer,n);
-					
-		//Send ACK with 1 if image exists and 0 otherwise
+		//Define next image
 		ss.str("");
 		ss << i;
 		tmpImgName->assign("");
@@ -1260,17 +1256,19 @@ int startGenerateSlideCube(int newsockfd, strReqImg *reqImg)
 		tmpImgName->append(ss.str());
 		tmpImgName->append(".png");
 		
-		memset(buffer,0,frameBodyLen);
-		buffer[0] = ( funcPathExists( tmpImgName->c_str() ) == true )?1:0;
-		//printf("%s \nEnviando %d buffer[0] = %d\n",tmpImgName->c_str(),i,buffer[0]);
-		//fflush(stdout);
-		write(newsockfd,buffer,2);		
-		if( buffer[0] == 1 )
+		//Send image if exists
+		if( funcPathExists( tmpImgName->c_str() ) == true )
 		{
 			std::cout << "Cropping and transmitting image " << i << "..." << std::endl;
-			cropAndTransmitSlide( tmpImgName, newsockfd, reqImg );			
+			write(newsockfd,&i,sizeof(int));			
+			cropAndTransmitSlide( tmpImgName, newsockfd, reqImg );
 		}	
-	}	
+	}
+	
+	std::cout << "Notify that finished" << std::endl;
+	i = -1;
+	write(newsockfd,&i,sizeof(int));
+	
 	std::cout << "Slide-Cube sent" << std::endl;
 	fflush(stdout);
 	//delete[] tmpImgName;
@@ -1298,13 +1296,13 @@ bool cropAndTransmitSlide( std::string* tmpImgName, int newsockfd, strReqImg *re
 	cols1 	= reqImg->slide.cols1;		cols2 	= reqImg->slide.cols2;
 	
 	//Crop imagery
-	/*
+	
 	uint8_t* tmpImg 		= stbi_load(tmpImgName->c_str(), &imgCols, &imgRows, &bpp, 3);	
 	uint8_t* croppedSlide 	= subimage( x1, y1, rows1, cols1, tmpImg, imgRows, imgCols );
 	uint8_t* croppedDiff 	= subimage( x2, y2, rows2, cols2, tmpImg, imgRows, imgCols );
-	*/
-	uint8_t* croppedSlide 	= stbi_load("croppedSlide.png", &cols1, &rows1, &bpp, 3);
-	uint8_t* croppedDiff 	= stbi_load("croppedDiff.png", &cols2, &rows2, &bpp, 3);
+	
+	//uint8_t* croppedSlide 	= stbi_load("croppedSlide.png", &cols1, &rows1, &bpp, 3);
+	//uint8_t* croppedDiff 	= stbi_load("croppedDiff.png", &cols2, &rows2, &bpp, 3);
 	
 
 	//printf( "img: %s (R:%d,C:%d), Uno(x1:%d,y1:%d,rows1:%d,cols1:%d)\n",tmpImgName->c_str(),imgRows,imgCols,x1,y1,rows1,cols1 );
@@ -1326,23 +1324,24 @@ bool cropAndTransmitSlide( std::string* tmpImgName, int newsockfd, strReqImg *re
 	uint8_t* cropImgTrans 	= (uint8_t*)malloc(totalLen);
 	memcpy( &cropImgTrans[0], croppedSlide, slideLen );
 	memcpy( &cropImgTrans[slideLen], croppedDiff, diffLen );
+	delete[] croppedSlide;
+	delete[] croppedDiff;
 	
-	printf("slideLen(%d), diffLen(%d), totalLen(%d)",slideLen,diffLen,totalLen);
-	fflush(stdout);
+	//printf("slideLen(%d), diffLen(%d), totalLen(%d)\n",slideLen,diffLen,totalLen);
+	//fflush(stdout);
 	
 	//Save image
-	//stbi_write_png("croppedSlide.png", cols1, rows1, 3, croppedSlide, cols1*3);
-	//stbi_write_png("croppedDiff.png", cols2, rows2, 3, croppedDiff, cols2*3);
-	//stbi_write_png("allTogether.png", (cols1+cols2), rows1, 3, cropImgTrans, (cols1+cols2)*3);
+	//stbi_write_png("./tmpTimeLapse/croppedSlide.png", cols1, rows1, 3, croppedSlide, cols1*3);
+	//stbi_write_png("./tmpTimeLapse/croppedDiff.png", cols2, rows2, 3, croppedDiff, cols2*3);
+	//stbi_write_png("./tmpTimeLapse/allTogether.png", (cols1+cols2), rows1, 3, cropImgTrans, (cols1+cols2)*3);
 	
 	//
 	//Transmit image
 	//
-	funcGenericSendFrame( newsockfd, cropImgTrans, totalLen );
+	//funcGenericSendFrame( newsockfd, cropImgTrans, totalLen );
+	funcSendOneMessage( newsockfd, cropImgTrans, totalLen );
 	
-	//delete[] tmpImg;
-	delete[] croppedSlide;
-	delete[] croppedDiff;
+	//delete[] tmpImg;	
 	delete[] cropImgTrans;	
 	
 	//funcMessage("termina: cropAndTransmitSlide");
@@ -1410,92 +1409,44 @@ int funcGenericSendFrame( int newsockfd, u_int8_t* frame, int lenToSend )
 	//std::cout << "funcGenericSendFrame" << std::endl;
 	
 	//Send frameLen and number of messages to send
-	int numMsgs = ceil( (float)lenToSend / (float)frameBodyLen );
+	//int numMsgs = floor( (float)lenToSend / (float)frameBodyLen );
 	
 	//u_int8_t* internFrame = (u_int8_t*)frame;
 	
-	funcSendOneMessage( newsockfd, (void*)&lenToSend, sizeof(int) );
+	//funcSendOneMessage( newsockfd, (void*)&lenToSend, sizeof(int) );
 
-	funcSendOneMessage( newsockfd, (void*)&numMsgs, sizeof(int) );
+	//funcSendOneMessage( newsockfd, (void*)&numMsgs, sizeof(int) );
 	
-	//frameBodyLen=1024
-	//funcMessage("\n\nframeLen and numMsgs sent");
-	
+	funcSendOneMessage( newsockfd, frame, lenToSend );
+
+
+	/*
 	//Send frame
-	int i, n, framePos;
-	i 		 = 0;
-	
-	//Prepare to read first request	
-	strReqSubframe* subframeReq = (strReqSubframe*)malloc(sizeof(strReqSubframe));
-	subframeReq->posIni 		= 0;
-	subframeReq->len			= frameBodyLen;
-	//funcMessage("Ready to send frame");
-	subframeReq = readSubframeRequested( newsockfd, subframeReq );
-	//printf("Begining request: pos(%d) len(%d)\n",subframeReq->posIni,subframeReq->len);
-	if( 
-		subframeReq->posIni < 0 || 
-		subframeReq->len < 1 	|| 
-		subframeReq->posIni > lenToSend 
-	)
-		funcSendERROR(newsockfd,0);
-	else
-	{	
-		//Read the rest of the frame
-		while( subframeReq->posIni <= lenToSend )
-		{
-			//funcMessage("Entering to the WHILE");
-			
-			//Validate correctnes of the parameters ans send ACK-ERROR
-			if( subframeReq->posIni >= 0 && subframeReq->len >= 1 )
-			{			
-				//Notify, parameters correct
-				funcSendACK(newsockfd,2);
-				//funcMessage("ACK sent");
-				
-				//Send subframe requested
-				funcSendOneMessage( newsockfd, &frame[subframeReq->posIni], subframeReq->len );
-				//funcMessage("One message sent");
-				
-				//Display status (this is removable)			
-				//std::cout << "framePos: " << subframeReq->posIni << " len: " << subframeReq->len << " i: " << i << std::endl;
-			}
-			else
-			{
-				//funcMessage("Check if scape requeste was received");
-				
-				//Check if is the scape instruction
-				if( subframeReq->len == -6543 )
-				{
-					//funcMessage("Scape requested");
-					//sleep(1);
-					funcSendACK(newsockfd,5);
-					return 1;
-				}
-				else
-				{
-					//funcMessage("Parameters NOT correct");
-				
-					//Notify, error receiving instruction parameters
-					std::cout << "ERROR receiving parameters at i: " << i << std::endl;
-					funcSendERROR(newsockfd,2);
-				}
-			}
-			
-			i++;
-			
-			//Read frame requested, validate this, and send ACK if all correct
-			//funcMessage("Reading new parameters");
-			subframeReq = readSubframeRequested( newsockfd, subframeReq );
-			//printf("New: pos(%d) len(%d) i(%i)\n",subframeReq->posIni,subframeReq->len,i);
-			//fflush(stdout);
-
-		}
-		
+	int i, framePos;
+	i 		 	= 0;
+	framePos 	= 0;
+	for( i=0; i<numMsgs; i++ )
+	{
+		funcSendOneMessage( newsockfd, &frame[framePos], frameBodyLen );
+		framePos += frameBodyLen;
+	}
+	//Send last message if necessary
+	int remainder = lenToSend%frameBodyLen;
+	if( remainder > 0 )
+	{
+		printf("Remainder: %d framePos:%d\n",remainder,framePos);
+		fflush(stdout);
+		funcSendOneMessage( newsockfd, &frame[framePos], remainder );
+		framePos += remainder;
 	}
 	
 	
+	funcMessage("\nEnd for");
+	*/
 	
-	delete[] subframeReq;
+	
+	
+	
 
 	return 1;
 }
