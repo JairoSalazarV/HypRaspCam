@@ -51,7 +51,7 @@ bool funcSaveFile(char* fileName, char* data, int fileLen, int w, int h);
 std::string *genSLIDECommand(strReqImg *reqImg);
 std::string *genCommand(strReqImg *reqImg, const std::string& fileName);
 bool reqImgIsValid( strReqImg *reqImg );
-bool fileExists( const std::string& fileName );
+int fileExists( const std::string& fileName );
 int applyTimeLapseUsingRaspistill(strReqImg *reqImg);
 //bool funcFolderExists( std::string folderPath );
 bool funcPathExists( std::string fileName );
@@ -69,7 +69,8 @@ int funcSendERROR( int newsockfd, u_int8_t ID );
 int funcSendACK( int newsockfd, u_int8_t ID );
 void funcMessage( std::string msg );
 int checkIfRequestedFileExists( int sockfd, strReqFileInfo* reqFileInfo );
-void sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo );
+int sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo );
+
 
 
 const unsigned int PORT  = 51717;
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
     memcpy(frameReceived,buffer,n);
 
     //Extract the message and execute instruction identified
-    printf("idMessage(%i) n(%i)\n",frameReceived->header.idMsg,n);
+    printf("\nidMessage(%i) n(%i)",frameReceived->header.idMsg,n);
     //printf("Message(%c%c)\n",frameReceived->msg[0],frameReceived->msg[1]);
     printf("\n");
     switch( frameReceived->header.idMsg ){
@@ -428,6 +429,17 @@ int main(int argc, char *argv[])
 		memcpy( reqFileInfo, frameReceived, n );
 		checkIfRequestedFileExists( newsockfd, reqFileInfo );
     	break;
+    	
+    //
+    //Send file, assume that file exists and user check this using  
+    //command 10.
+    //..
+    case 11:
+		//Order message	
+		memset( reqFileInfo, '\0', sizeof(reqFileInfo)  );		
+		memcpy( reqFileInfo, frameReceived, n );
+		n = sendRequestedFile( newsockfd, reqFileInfo );
+    	break;
 
     //Unrecognized instruction
     default:
@@ -453,17 +465,24 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+int funcSendFile( int sockfd, strReqFileInfo* reqFileInfo )
+{
+	std::string fileRequested = file2String( reqFileInfo->fileName );
+	
+	
+	return 1;	
+}
+
 int checkIfRequestedFileExists( int sockfd, strReqFileInfo* reqFileInfo )
 {	
 	//Check if file exists and send ACK or ERROR
-	
-	//printf( "Len(%d) charFileName: %s\n", reqFileInfo->fileNameLen, reqFileInfo->fileName );
-	//fflush(stdout);
+
 
 	//Check if file exists
 	std::string internFileName;
 	internFileName.assign( reqFileInfo->fileName );
 	
+	//Notify to user
 	printf( "Client asked for: %s\n", internFileName.c_str() );
 	fflush(stdout);
 	
@@ -471,20 +490,6 @@ int checkIfRequestedFileExists( int sockfd, strReqFileInfo* reqFileInfo )
 	{
 		funcMessage("File exists");
 		funcSendACK( sockfd, 101 );
-		
-		
-		
-		//Send image as frame
-		//..
-		std::string tmpImg = file2String(internFileName);
-		printf("size: %d\n",tmpImg.size());
-		if( sendBigFrame( sockfd, tmpImg ) ){
-			printf("Photogram sent\n");
-		}else{
-			printf("ERROR sending photo\n");
-		}	
-		
-		
 	}
 	else
 	{
@@ -495,7 +500,7 @@ int checkIfRequestedFileExists( int sockfd, strReqFileInfo* reqFileInfo )
 	return -1;
 }
 
-void sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo )
+int sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo )
 {	
 	//It assumes that file exists
 	// Recomendation: Client must to use checkIfRequestedFileExists
@@ -505,17 +510,23 @@ void sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo )
 	
 	//Send image as frame
 	//..
+	int n;
+	
+	//Read file contain
+	std::string tmpFile = file2String(reqFileInfo->fileName);
+	
+	//Send file len
+	int fileLen = tmpFile.size();
+	printf("fileLen: %d\n",fileLen);
+	fflush(stdout);
+	n = write( sockfd, &fileLen, sizeof(int)+1 );
+	
+	//Send file
+	n = write( sockfd, tmpFile.c_str(), fileLen+1 );
+	printf("Bytes inyectados: %d\n",n);
 	
 	
-	std::string tmpImg = file2String(reqFileInfo->fileName);
-	printf("size: %d\n",tmpImg.size());
-	if( sendBigFrame( sockfd, tmpImg ) ){
-		printf("Photogram sent\n");
-	}else{
-		printf("ERROR sending photo\n");
-	}
-	
-	
+	return n;
 
 }
 
@@ -880,7 +891,7 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 	return tmpCommand;
 }
 
-bool fileExists( const std::string& fileName ){
+int fileExists( const std::string& fileName ){
 	struct stat buffer;
 	return( stat(fileName.c_str(), &buffer) == 0 );
 }
