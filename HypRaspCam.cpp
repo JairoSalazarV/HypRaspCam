@@ -314,12 +314,13 @@ int main(int argc, char *argv[])
     case 6:
       break;
 
-    //Require image from scratch
+    //Obtain and execute command to aquire image using raspistill
     //..
     case 7:
 		//Prepare memory
 		memset( reqImg, '\0', sizeof(strReqImg)  );		
 		memcpy( reqImg, frameReceived, sizeof(strReqImg) );
+		memset(buffer,'\0',3);
 		//Send ACK with camera status
 		if( reqImgIsValid( reqImg ) )
 			buffer[1] = 1;
@@ -333,22 +334,44 @@ int main(int argc, char *argv[])
 			//..
 			printf("Making the snapshot by applying raspistill\n");
 			std::string fileName = "./tmpSnapshots/tmpImg.RGB888";
-			if( getRaspImg(reqImg,fileName) ){
-			  printf("Snapshot [OK]\n");
+			if( getRaspImg(reqImg,fileName) ){				
+				printf("Snapshot [OK]\n");
 			}else{
 			  printf("Snapshot[Fail]\n");
 			  break;
 			}
 
+			/*
 			//Send image as frame
-			//..
+			//..			
 			std::string tmpImg = file2String(fileName);
 			printf("size: %d\n",tmpImg.size());
 			if( sendBigFrame( newsockfd, tmpImg ) ){
 				printf("Photogram sent\n");
 			}else{
 				printf("ERROR sending photo\n");
-			}		
+			}
+			*/
+		
+			/*
+			//Read file contain
+			std::string tmpFile = file2String( fileName );
+			
+			//Send file len
+			int fileLen = tmpFile.size();
+			printf("fileLen: %d\n",fileLen);
+			fflush(stdout);
+			memset(buffer,'\0',sizeof(int)+1);
+			memcpy(buffer,&fileLen,sizeof(int));
+			n = write( sockfd, buffer, sizeof(int) );
+			*/
+			
+			
+			/*
+			//Send file
+			//n = write( sockfd, tmpFile.c_str(), fileLen+1 );
+			//printf("Bytes inyectados: %d\n",n);	
+			*/	
 
 		}
     	break;
@@ -617,9 +640,9 @@ bool getRaspImg(strReqImg *reqImg, const std::string &fileName){
 	std::string *raspistillCommand = genCommand(reqImg, fileName);
 	printf("Comm: %s\n",raspistillCommand->c_str());
 	//Prepare command as required
-	//char *tmpComm = new char[raspistillCommand->size()+1];
-	//std::copy(raspistillCommand->begin(), raspistillCommand->end(),tmpComm);
-	//tmpComm[raspistillCommand->size()] = '\0';
+	char *tmpComm = new char[raspistillCommand->size()+1];
+	std::copy(raspistillCommand->begin(), raspistillCommand->end(),tmpComm);
+	tmpComm[raspistillCommand->size()] = '\0';
 	
 	//Execute raspistill
 	//..
@@ -628,10 +651,9 @@ bool getRaspImg(strReqImg *reqImg, const std::string &fileName){
 		//remove(fileName.c_str());	
 	}
 	//Execute raspistill
-	//FILE* pipe;
-	//pipe = popen(raspistillCommand->c_str(), "r");
-	//pclose(pipe);
-
+	FILE* pipe;
+	pipe = popen(raspistillCommand->c_str(), "r");
+	pclose(pipe);
 	
 	//Verify if it was created the snapshot
 	//..
