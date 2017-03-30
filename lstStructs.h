@@ -27,6 +27,7 @@
     #define _PATH_IMAGE_RECEIVED            "./tmpImages/tmpImgRec.RGB888"
     #define _PATH_SQUARE_APERTURE           "./XML/squareAperture.xml"
     #define _PATH_REGION_OF_INTERES         "./XML/regionOfInteres.xml"
+    #define	_PATH_IMG_GEN_USING_RASP		"./tmpSnapshots/tmpImg.RGB888"
 
 /*
     typedef struct customLineParameters{

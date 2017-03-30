@@ -70,6 +70,7 @@ int funcSendACK( int newsockfd, u_int8_t ID );
 void funcMessage( std::string msg );
 int checkIfRequestedFileExists( int sockfd, strReqFileInfo* reqFileInfo );
 int sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo );
+int saveBinFile_From_u_int8_T( std::string fileName, uint8_t *data, size_t len);
 
 
 
@@ -295,15 +296,8 @@ int main(int argc, char *argv[])
         */
         break;
 
+	//Test
     case 4:
-		printf("Image requested\n");
-		infile.open("yo.jpg", std::ifstream::binary);
-		if( sendFile( newsockfd, infile ) ){
-			printf("File sent\n");
-		}else{
-			printf("File NOT sent\n");
-		}
-		infile.close();
 		break;
     
     //Camera operations      
@@ -340,43 +334,15 @@ int main(int argc, char *argv[])
 			  printf("Snapshot[Fail]\n");
 			  break;
 			}
-
-			/*
-			//Send image as frame
-			//..			
-			std::string tmpImg = file2String(fileName);
-			printf("size: %d\n",tmpImg.size());
-			if( sendBigFrame( newsockfd, tmpImg ) ){
-				printf("Photogram sent\n");
-			}else{
-				printf("ERROR sending photo\n");
-			}
-			*/
-		
-			/*
-			//Read file contain
-			std::string tmpFile = file2String( fileName );
 			
-			//Send file len
-			int fileLen = tmpFile.size();
-			printf("fileLen: %d\n",fileLen);
-			fflush(stdout);
-			memset(buffer,'\0',sizeof(int)+1);
-			memcpy(buffer,&fileLen,sizeof(int));
-			n = write( sockfd, buffer, sizeof(int) );
-			*/
+			//Cut image if necessary
 			
-			
-			/*
-			//Send file
-			//n = write( sockfd, tmpFile.c_str(), fileLen+1 );
-			//printf("Bytes inyectados: %d\n",n);	
-			*/	
 
 		}
     	break;
 
 	case 8:
+	/*
 		//Prepare memory		
 		memset( reqImg, '\0', sizeof(strReqImg) );
 		memcpy( reqImg, frameReceived, sizeof(strReqImg) );
@@ -387,22 +353,7 @@ int main(int argc, char *argv[])
 		write(newsockfd,&buffer,2);
 		if( buffer[1] == 0 )break;
 		else{
-			/* 
-			//Get diffracted image
-			//..			
-			printf("Making the snapshot by applying raspistill\n");
-			std::string fileNameDiff = "./tmpSnapshots/tmpImgDiff.RGB888";
-			reqImg->squApert = false;
-			reqImg->needCut	 = true;
-			if( getRaspImg(reqImg,fileNameDiff) ){
-			  printf("Snapshot diffraction [OK]\n");
-			}else{
-			  printf("Snapshot diffraction [Fail]\n");
-			  break;
-			}
-			*/
-			
-			
+
 			//Get square-aperture image
 			//..
 			printf("Making the square-aperture snapshot by applying raspistill\n");
@@ -415,7 +366,7 @@ int main(int argc, char *argv[])
 			  printf("Snapshot square-aperture [Fail]\n");
 			  break;
 			}		
-		}
+		}*/
     	break;
 
 	//
@@ -661,6 +612,51 @@ bool getRaspImg(strReqImg *reqImg, const std::string &fileName){
 		return false;
 	}
 	
+	//Crop image if neccesary
+	//..
+	if( reqImg->needCut )
+	{
+		float x,y,w,h;	
+		//Normalization
+		if(reqImg->squApert)
+		{
+			//x = (float)reqImg->sqApSett.rectX / (float)_BIG_WIDTH;
+			//y = (float)reqImg->sqApSett.rectY / (float)_BIG_HEIGHT;
+			//w = (float)reqImg->sqApSett.rectW / (float)_BIG_WIDTH;
+			//d = (float)reqImg->sqApSett.rectH / (float)_BIG_HEIGHT;			
+			//printf("Square: x(%.4f) y(%.4f) w(%.4f) h(%.4f)\n",x,y,w,d);
+			//printf("Square: x(%d) y(%d) w(%d) h(%d)\n",reqImg->sqApSett.rectX,reqImg->sqApSett.rectY,reqImg->sqApSett.rectW,reqImg->sqApSett.rectH);
+			x = reqImg->sqApSett.rectX;
+			y = reqImg->sqApSett.rectY;
+			w = reqImg->sqApSett.rectW;
+			h = reqImg->sqApSett.rectH;
+		}
+		else
+		{			
+			//x = (float)reqImg->diffArea.rectX / (float)_BIG_WIDTH;
+			//y = (float)reqImg->diffArea.rectY / (float)_BIG_HEIGHT;
+			//w = (float)reqImg->diffArea.rectW / (float)_BIG_WIDTH;
+			//d = (float)reqImg->diffArea.rectH / (float)_BIG_HEIGHT;
+			//printf("Diff: x(%.4f) y(%.4f) w(%.4f) h(%.4f)\n",x,y,w,d);
+			x = reqImg->diffArea.rectX;
+			y = reqImg->diffArea.rectY;
+			w = reqImg->diffArea.rectW;
+			h = reqImg->diffArea.rectH;
+		}
+		
+		//Save image
+		int imgCols, imgRows, bpp;
+		uint8_t* tmpImg 		= stbi_load(_PATH_IMG_GEN_USING_RASP, &imgCols, &imgRows, &bpp, 3);	
+		uint8_t* croppedSlide 	= subimage( x, y, h, w, tmpImg, imgRows, imgCols );
+		if( saveBinFile_From_u_int8_T( _PATH_IMG_GEN_USING_RASP, croppedSlide, (w*h*3) ) )
+			std::cout << "File cropped successfully" << std::endl;
+		else
+			std::cout << "ERROR cropping image" << std::endl;
+			
+		
+		
+	}
+	
 	
 	return true;
 		
@@ -821,78 +817,15 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 		tmpCommand->append(" -t " + ss.str());
 	}	
 	
-	//Crop image if neccesary
-	//..
-	if( reqImg->needCut )
-	{
-		float x,y,w,d;	
-		//Normalization
-		if(reqImg->squApert)
-		{
-			x = (float)reqImg->sqApSett.rectX / (float)_BIG_WIDTH;
-			y = (float)reqImg->sqApSett.rectY / (float)_BIG_HEIGHT;
-			w = (float)reqImg->sqApSett.rectW / (float)_BIG_WIDTH;
-			d = (float)reqImg->sqApSett.rectH / (float)_BIG_HEIGHT;
-			//printf("Square: x(%.4f) y(%.4f) w(%.4f) h(%.4f)\n",x,y,w,d);
-			//printf("Square: x(%d) y(%d) w(%d) h(%d)\n",reqImg->sqApSett.rectX,reqImg->sqApSett.rectY,reqImg->sqApSett.rectW,reqImg->sqApSett.rectH);
-		}
-		else
-		{
-			x = (float)reqImg->diffArea.rectX / (float)_BIG_WIDTH;
-			y = (float)reqImg->diffArea.rectY / (float)_BIG_HEIGHT;
-			w = (float)reqImg->diffArea.rectW / (float)_BIG_WIDTH;
-			d = (float)reqImg->diffArea.rectH / (float)_BIG_HEIGHT;
-			printf("Diff: x(%.4f) y(%.4f) w(%.4f) h(%.4f)\n",x,y,w,d);
-		}
-		//Add region of interes to the raspistill command
-		tmpCommand->append(" -roi ");		
-		ss.str("");
-		ss<<x;
-		tmpCommand->append(ss.str()+",");
-		ss.str("");
-		ss<<y;
-		tmpCommand->append(ss.str()+",");
-		ss.str("");
-		ss<<w;
-		tmpCommand->append(ss.str()+","	);
-		ss.str("");
-		ss<<d;
-		tmpCommand->append(ss.str());
-		//Width and Height
-		if(reqImg->squApert)
-		{
-			//Width
-			ss.str("");
-			ss<<reqImg->sqApSett.rectW;
-			tmpCommand->append(" -w " + ss.str());
-			//Height
-			ss.str("");
-			ss<<reqImg->sqApSett.rectH;
-			tmpCommand->append(" -h " + ss.str());
-		}
-		else
-		{
-			//Width
-			ss.str("");
-			ss<<reqImg->diffArea.rectW;
-			tmpCommand->append(" -w " + ss.str());
-			//Height
-			ss.str("");
-			ss<<reqImg->diffArea.rectH;
-			tmpCommand->append(" -h " + ss.str());
-		}
-	}
-	else
-	{
-		//Width
-		ss.str("");
-		ss<<reqImg->imgCols;
-		tmpCommand->append(" -w " + ss.str());
-		//Height
-		ss.str("");
-		ss<<reqImg->imgRows;
-		tmpCommand->append(" -h " + ss.str());
-	}
+	//Width
+	ss.str("");
+	ss<<reqImg->imgCols;
+	tmpCommand->append(" -w " + ss.str());
+	
+	//Height
+	ss.str("");
+	ss<<reqImg->imgRows;
+	tmpCommand->append(" -h " + ss.str());
 	
 	//AWB
 	if(strcmp((char*)reqImg->raspSett.AWB, "none")!=0){
@@ -1574,6 +1507,15 @@ int funcSendERROR( int newsockfd, u_int8_t ID )
 	
 	//Return error sending message
 	return 0;
+}
+
+int saveBinFile_From_u_int8_T( std::string fileName, uint8_t *data, size_t len)
+{
+    std::ofstream fp;
+    fp.open( fileName.c_str(), std::ios::out | std::ios::binary );
+    fp.write((char*)data, len);
+    fp.close();
+    return 1;
 }
 
 
