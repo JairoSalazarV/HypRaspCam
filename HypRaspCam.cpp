@@ -527,7 +527,10 @@ int applyTimeLapseUsingRaspistill(strReqImg *reqImg)
 	std::ostringstream intToStr; 
 	std::string tmpFileName;
 	numImgs 		= 0;
-	expectedNumImgs = ceil( (float)reqImg->slide.duration / (float)reqImg->slide.speed );
+	expectedNumImgs = ceil(
+                            (float)(reqImg->slide.degreeEnd - reqImg->slide.degreeIni) /
+                            (float)reqImg->slide.degreeJump
+                         );
 	for( i=1; i<=expectedNumImgs; i++ )
 	{
 		intToStr.str("");
@@ -717,7 +720,10 @@ bool reqImgIsValid( strReqImg *reqImg )
 		if( reqImg->slide.cols2 < 1 ){printf( "cols2 < 1\n" );return false;}
 		
 		if( reqImg->slide.speed < 100 ){printf( "speed < 100\n" );return false;}
-		if( reqImg->slide.duration < 500 ){printf( "duration < 500\n" );return false;}
+		if( reqImg->slide.degreeEnd < 0 ){printf( "degreeEnd < 0\n" );return false;}
+		if( reqImg->slide.degreeEnd > 360 ){printf( "degreeEnd > 360\n" );return false;}
+		if( reqImg->slide.degreeJump < 1 ){printf( "degreeJump < 1\n" );return false;}
+		if( reqImg->slide.degreeJump > 360 ){printf( "degreeJump >360\n" );return false;}
 	}
 		
 	
@@ -738,30 +744,66 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	
 	//Add lapse (speed) and duration
 	numberToString.str("");
-	numberToString << " -t " << reqImg->slide.duration << " -tl " << reqImg->slide.speed;
+	int duration = 	 ceil( (float)( reqImg->slide.degreeEnd - reqImg->slide.degreeIni ) / 
+					   (float)reqImg->slide.degreeJump ) * reqImg->slide.speed;
+	numberToString << " -t " << duration << " -tl " << reqImg->slide.speed;
 	tmpCommand->append( numberToString.str() );
+	
+	//Width
+	numberToString.str("");
+	numberToString<<reqImg->imgCols;
+	tmpCommand->append(" -w " + numberToString.str());
+	
+	//Height
+	numberToString.str("");
+	numberToString<<reqImg->imgRows;
+	tmpCommand->append(" -h " + numberToString.str());
 
-	
-	
-	
-	/*
 	//Colour balance?
 	if(reqImg->raspSett.ColorBalance){
 		tmpCommand->append(" -ifx colourbalance");
 	}
+	
 	//Denoise?
 	if(reqImg->raspSett.Denoise){
 		tmpCommand->append(" -ifx denoise");
 	}	
-	//Square Shuter speed
-	int shutSpeed = reqImg->raspSett.SquareShutterSpeed + reqImg->raspSett.SquareShutterSpeedSmall;
-	if( (reqImg->squApert && shutSpeed>0))
-	{		
-		ss.str("");
-		ss<<shutSpeed;
-		tmpCommand->append(" -ss " + ss.str());
+	
+	//Diffraction Shuter speed
+	int shutSpeed = reqImg->raspSett.ShutterSpeed + reqImg->raspSett.ShutterSpeedSmall;
+	if(
+		(!reqImg->squApert && shutSpeed>0) ||	//Whe is by parts
+		(reqImg->fullFrame  && shutSpeed>0)	//Whn is unique and shutter speed has been setted
+	)
+	{
+		numberToString.str("");
+		numberToString<<shutSpeed;
+		tmpCommand->append(" -ss " + numberToString.str());
 	}
-	*/
+	
+	//AWB
+	if(strcmp((char*)reqImg->raspSett.AWB, "none")!=0){
+		std::string sAWB((char*)reqImg->raspSett.AWB, sizeof(reqImg->raspSett.AWB));
+		tmpCommand->append(" -awb ");
+		tmpCommand->append(sAWB.c_str());
+		//printf("Entro a AWB: %s\n",sAWB.c_str());
+	}
+	
+	//Exposure
+	if(strcmp((char*)reqImg->raspSett.Exposure, "none")!=0){
+		std::string sExposure((char*)reqImg->raspSett.Exposure, sizeof(reqImg->raspSett.Exposure));
+		tmpCommand->append(" -ex ");
+		tmpCommand->append(sExposure.c_str());
+		//printf("Entro a Exp: %s\n",sExposure.c_str());
+	}
+	
+	//ISO
+	if( reqImg->raspSett.ISO > 0 ){
+		numberToString.str("");
+		numberToString<<reqImg->raspSett.ISO;
+		tmpCommand->append(" -ISO " + numberToString.str());
+	}
+	
 	
 	
 	return tmpCommand;
@@ -776,6 +818,7 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 	std::ostringstream ss;
 	tmpCommand->append(fileName);
 	tmpCommand->append(" -n -q 100 -gc");
+	
 	//Colour balance?
 	if(reqImg->raspSett.ColorBalance){
 		tmpCommand->append(" -ifx colourbalance");
@@ -842,6 +885,14 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 		tmpCommand->append(sExposure.c_str());
 		//printf("Entro a Exp: %s\n",sExposure.c_str());
 	}
+	
+	//ISO
+	if( reqImg->raspSett.ISO > 0 ){
+		ss.str("");
+		ss<<reqImg->raspSett.ISO;
+		tmpCommand->append(" -ISO " + ss.str());
+	}
+	
 	
 	return tmpCommand;
 }
@@ -1210,7 +1261,10 @@ int startGenerateSlideCube(int newsockfd, strReqImg *reqImg)
 	char buffer[frameBodyLen];
 	strNumSlideImgs strNumImgs;
 	
-	expectedN = ceil( (float)reqImg->slide.duration / (float)reqImg->slide.speed );
+	expectedN = ceil(
+						(float)(reqImg->slide.degreeEnd - reqImg->slide.degreeIni) /
+						(float)reqImg->slide.degreeJump
+					 );
 	//expectedN = 1;
 	for( i=1; i<=expectedN; i++ )
 	{

@@ -167,8 +167,11 @@
         int y2;         //Difraction
         int rows2;      //Difraction
         int cols2;      //Difraction
+        int degreeIni;  //Start point
+        int degreeEnd;  //Finish point
+        int degreeJump; //Degrees at each step
         int speed;      //time lapse in ms, recomended at least 800
-        int duration;   //time in seconds of the total time snapshing
+        //int duration;   //time in ms of the total time snapshing
     }strSlideSettings;
     
     typedef struct strReqImg{
