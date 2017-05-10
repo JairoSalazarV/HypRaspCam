@@ -42,6 +42,7 @@ void *sender(void *arg);
 void error(const char *msg);
 void obtainIP(char* host);
 bool sendBigFrame( int newsockfd, std::string bigFrame );
+void recordVideo( strReqImg *reqImg );
 bool sendFile( int newsockfd, std::ifstream &infile );
 void funcPrintFirst(int n, int max, char *buffer);
 bool getRaspImg(strReqImg *reqImg, const std::string& fileName);
@@ -49,6 +50,7 @@ unsigned char *funcCropImg(unsigned char* original, int origW, int x1, int y1, i
 std::string file2String( const std::string &fileName );
 bool funcSaveFile(char* fileName, char* data, int fileLen, int w, int h);
 std::string *genSLIDECommand(strReqImg *reqImg);
+std::string *genRaspiVideoCommand(strReqImg *reqImg, const std::string& fileName);
 std::string *genCommand(strReqImg *reqImg, const std::string& fileName);
 bool reqImgIsValid( strReqImg *reqImg );
 int fileExists( const std::string& fileName );
@@ -414,6 +416,24 @@ int main(int argc, char *argv[])
 		memcpy( reqFileInfo, frameReceived, n );
 		n = sendRequestedFile( newsockfd, reqFileInfo );
     	break;
+    	
+    //
+    //1) Send ACK
+    //2) Delete tmpVideo if exist
+    //3) Start to record a new video
+    //
+    case 12:
+		//Ordering message
+		memset( reqImg, '\0', sizeof(strReqImg)  );		
+		memcpy( reqImg, frameReceived, sizeof(strReqImg) );
+		//Send ACK with camera status OK
+		buffer[1] = 1;
+		write(newsockfd,&buffer,2);
+		//Delete tmpVideo if exist
+		funcClearFolder( "tmpSnapVideos" );
+		//Start to record a new video
+		recordVideo( reqImg );
+		break;
 
     //Unrecognized instruction
     default:
@@ -437,6 +457,25 @@ int main(int argc, char *argv[])
   close(sockfd);
   printf("It finishes...\n");
   return 0;
+}
+
+void recordVideo( strReqImg *reqImg )
+{
+	//Concatenate raspisVid command
+	//raspivid -o video.h264 -t 1000
+	//..
+	std::string *raspiVIDEOCommand = genRaspiVideoCommand(reqImg, _PATH_RASP_VIDEO_RECORDED);
+	printf("RaspiVIDEOCommand: %s\n",raspiVIDEOCommand->c_str());
+	//Prepare command as required
+	char *tmpComm = new char[raspiVIDEOCommand->size()+1];
+	std::copy(raspiVIDEOCommand->begin(), raspiVIDEOCommand->end(),tmpComm);
+	tmpComm[raspiVIDEOCommand->size()] = '\0';
+	
+	//Execute raspistill
+	FILE* pipe;
+	pipe = popen(raspiVIDEOCommand->c_str(), "r");
+	pclose(pipe);
+	
 }
 
 int funcSendFile( int sockfd, strReqFileInfo* reqFileInfo )
@@ -807,6 +846,30 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	
 	
 	return tmpCommand;
+}
+
+std::string *genRaspiVideoCommand(strReqImg *reqImg, const std::string& fileName)
+{
+	//Initialize command
+	//..
+	std::string *tmpCommand = new std::string("raspivid -o ");	
+	tmpCommand->append(fileName);		
+	
+	std::ostringstream auxIntToString;
+	
+	//Add seconds
+	if( reqImg->video.seconds > 0 )
+	{
+		auxIntToString.str("");
+		auxIntToString<< (1000*reqImg->video.seconds);
+		tmpCommand->append(" -t " + auxIntToString.str());
+	}
+	else
+	{
+		tmpCommand->append(" -t 3000 ");
+	}
+	
+	return tmpCommand;	
 }
 
 std::string *genCommand(strReqImg *reqImg, const std::string& fileName)

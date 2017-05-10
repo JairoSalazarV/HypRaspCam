@@ -25,6 +25,7 @@
     #define _PATH_DISPLAY_IMAGE             "./tmpImages/tmpImg2Disp.png"
     #define _PATH_AUX_IMG                   "./tmpImages/tmp.png"
     #define _PATH_IMAGE_RECEIVED            "./tmpImages/tmpImgRec.RGB888"
+    #define _PATH_RASP_VIDEO_RECORDED       "./tmpSnapVideos/tmpVideo.h264"
     #define _PATH_SQUARE_APERTURE           "./XML/squareAperture.xml"
     #define _PATH_REGION_OF_INTERES         "./XML/regionOfInteres.xml"
     #define	_PATH_IMG_GEN_USING_RASP		"./tmpSnapshots/tmpImg.RGB888"
@@ -174,6 +175,11 @@
         //int duration;   //time in ms of the total time snapshing
     }strSlideSettings;
     
+    typedef struct strRecordVideo
+    {
+        int seconds;
+    }strRecordVideo;
+
     typedef struct strReqImg{
         unsigned char idMsg;
         unsigned char stabSec;
@@ -187,6 +193,7 @@
         squareAperture sqApSett;
         squareAperture diffArea;
         strSlideSettings slide;
+        strRecordVideo video;
     }strReqImg;
 
     typedef struct structSettings{
