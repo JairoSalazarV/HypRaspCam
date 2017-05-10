@@ -2,6 +2,7 @@
 //27 August 2016 morning
 //20 Marzo 2017: - Se agregó la validación de mensajes
 //				 - Lectura de imágenes y recorte de subimágenes
+//9 Mayo 2017 Se agregó la opción 12 para grabar y envíar vídeos
 
 
 #include <iostream>
