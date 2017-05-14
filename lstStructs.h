@@ -3,6 +3,9 @@
 
     #include <string>
     #include <sys/types.h>
+    
+    #include "lstraspividstruct.h"
+        
     //#include <QString>
 
     //#include <graphicsview.h>
@@ -175,11 +178,6 @@
         //int duration;   //time in ms of the total time snapshing
     }strSlideSettings;
     
-    typedef struct strRecordVideo
-    {
-        int seconds;
-    }strRecordVideo;
-
     typedef struct strReqImg{
         unsigned char idMsg;
         unsigned char stabSec;
@@ -193,7 +191,7 @@
         squareAperture sqApSett;
         squareAperture diffArea;
         strSlideSettings slide;
-        strRecordVideo video;
+        structRaspivid video;
     }strReqImg;
 
     typedef struct structSettings{

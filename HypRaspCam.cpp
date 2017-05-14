@@ -853,22 +853,311 @@ std::string *genRaspiVideoCommand(strReqImg *reqImg, const std::string& fileName
 {
 	//Initialize command
 	//..
-	std::string *tmpCommand = new std::string("raspivid -o ");	
+	//std::string *tmpCommand = new std::string("raspivid -w 1296 -h 972 -o ");
+	std::string *tmpCommand = new std::string("raspivid -o ");		
 	tmpCommand->append(fileName);		
 	
 	std::ostringstream auxIntToString;
 	
 	//Add seconds
-	if( reqImg->video.seconds > 0 )
+	if( reqImg->video.t > 0 )
 	{
 		auxIntToString.str("");
-		auxIntToString<< (1000*reqImg->video.seconds);
+		auxIntToString<< (1000*reqImg->video.t);
 		tmpCommand->append(" -t " + auxIntToString.str());
 	}
 	else
 	{
-		tmpCommand->append(" -t 3000 ");
+		tmpCommand->append(" -t 3000");
 	}
+	
+	//Width
+	if( reqImg->video.w > 0 )
+	{
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.w;
+		tmpCommand->append(" -w " + auxIntToString.str());		
+	}
+	
+	//Height
+	if( reqImg->video.h > 0 )
+	{
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.h;
+		tmpCommand->append(" -h " + auxIntToString.str());		
+	}
+
+	//-fps, --framerate	: Specify the frames per second to record
+	if( reqImg->video.fps > 0 )
+	{
+		//Mode indicates video size
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.fps;
+		tmpCommand->append(" -fps " + auxIntToString.str());		
+	}
+	
+    //-b, --bitrate	: Set bitrate. Use bits per second (e.g. 10MBits/s would be -b 10000000)
+    if( reqImg->video.b > 0 )
+	{
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.b;
+		tmpCommand->append(" -fps " + auxIntToString.str());	
+	}
+    
+    //-v, --verbose	: Output verbose information during run
+    if( reqImg->video.v > 0 )
+		tmpCommand->append(" -v " );
+    
+    //-t, --timeout	: Time (in ms) to capture for. If not specified, set to 5s. Zero to disable
+    if( reqImg->video.t > 0 )
+		tmpCommand->append(" -t " );
+		
+    //-d, --demo	: Run a demo mode (cycle through range of camera options, no capture)
+    if( reqImg->video.d > 0 )
+		tmpCommand->append(" -d " );
+    
+    //-e, --penc	: Display preview image *after* encoding (shows compression artifacts)
+    if( reqImg->video.e > 0 )
+		tmpCommand->append(" -e " );
+		
+    //-g, --intra	: Specify the intra refresh period (key frame rate/GoP size). Zero to produce an initial I-frame and then just P-frames.
+    //-pf, --profile	: Specify H264 profile to use for encoding
+    //-td, --timed	: Cycle between capture and pause. -cycle on,off where on is record time and off is pause time in ms
+    //-s, --signal	: Cycle between capture and pause on Signal
+    //-k, --keypress	: Cycle between capture and pause on ENTER
+    //-i, --initial	: Initial state. Use 'record' or 'pause'. Default 'record'
+    //-qp, --qp	: Quantisation parameter. Use approximately 10-40. Default 0 (off)
+    //-ih, --inline	: Insert inline headers (SPS, PPS) to stream
+    //-sg, --segment	: Segment output file in to multiple files at specified interval <ms>
+    //-wr, --wrap	: In segment mode, wrap any numbered filename back to 1 when reach number
+    //-sn, --start	: In segment mode, start with specified segment number
+    //-sp, --split	: In wait mode, create new output file for each start event
+    //-c, --circular	: Run encoded data through circular buffer until triggered then save
+    //-x, --vectors	: Output filename <filename> for inline motion vectors
+    //-cs, --camselect	: Select camera <number>. Default 0
+        
+    //-set, --settings	: Retrieve camera settings and write to stdout
+    if( reqImg->video.set > 0 )
+		tmpCommand->append(" -set " );
+		
+    //-md, --mode	: Force sensor mode. 0=auto. See docs for other modes available
+    //Mode
+	if( reqImg->video.md > 0 )
+	{
+		//Mode indicates video size
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.md;
+		tmpCommand->append(" --mode " + auxIntToString.str());		
+	}
+	
+    //-if, --irefresh	: Set intra refresh type
+    if( reqImg->video._if > 0 )
+		tmpCommand->append(" -if " );
+    
+    //-fl, --flush	: Flush buffers in order to decrease latency
+    if( reqImg->video.fl > 0 )
+		tmpCommand->append(" -fl " );
+		
+    //-pts, --save-pts	: Save Timestamps to file for mkvmerge
+    if( reqImg->video.pts > 0 )
+		tmpCommand->append(" -pts " );
+		
+    //-cd, --codec	: Specify the codec to use - H264 (default) or MJPEG
+	if( strcmp(reqImg->video.cd, "MJPEG") )
+		tmpCommand->append(" -cd MJPEG " );
+		
+		
+	//-sh, --sharpness	: Set image sharpness (-100 to 100)
+	if( reqImg->video.sh != '\0' )
+	{
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.sh;
+		tmpCommand->append(" -sh " + auxIntToString.str());		
+	}
+	
+    //-co, --contrast	: Set image contrast (-100 to 100)
+    if( reqImg->video.co != '\0' )
+	{
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.co;
+		tmpCommand->append(" -co " + auxIntToString.str());		
+	}
+	
+    //-br, --brightness	: Set image brightness (0 to 100)
+    if( reqImg->video.br != '\0' )
+	{
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.br;
+		tmpCommand->append(" -br " + auxIntToString.str());		
+	}
+	
+    //-sa, --saturation	: Set image saturation (-100 to 100)
+    if( reqImg->video.sa != '\0' )
+	{
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.sa;
+		tmpCommand->append(" -sa " + auxIntToString.str());		
+	}
+	
+    //-ISO, --ISO	: Set capture ISO
+    if( reqImg->video.ISO != '\0' )
+	{
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.ISO;
+		tmpCommand->append(" -ISO " + auxIntToString.str());		
+	}
+	
+    //-vs, --vstab	: Turn on video stabilisation
+    if( reqImg->video.vs > 0 )
+		tmpCommand->append(" -vs ");		
+
+    //-ev, --ev	: Set EV compensation - steps of 1/6 stop
+    //-ex, --exposure	: Set exposure mode (see Notes)
+    if( reqImg->video.ex > 0 )
+	{
+		auxIntToString.str("");
+		switch( reqImg->video.ex )
+		{
+			/*
+		    #define     _EXPOSURE_off                           1
+			#define     _EXPOSURE_auto                          2
+			#define     _EXPOSURE_night                         3
+			#define     _EXPOSURE_nightpreview                  4
+			#define     _EXPOSURE_backlight                     5
+			#define     _EXPOSURE_spotlight                     6
+			#define     _EXPOSURE_sports                        7
+			#define     _EXPOSURE_snow                          8
+			#define     _EXPOSURE_beach                         9
+			#define     _EXPOSURE_verylong                      10
+			#define     _EXPOSURE_fixedfps                      11
+			#define     _EXPOSURE_antishake                     12
+			#define     _EXPOSURE_fireworks                     13
+			*/			
+			case _EXPOSURE_off:
+				tmpCommand->append(" -ex off " );
+				break;
+			case _EXPOSURE_auto:
+				tmpCommand->append(" -ex auto " );
+				break;
+			case _EXPOSURE_night:
+				tmpCommand->append(" -ex night " );
+				break;
+			case _EXPOSURE_nightpreview:
+				tmpCommand->append(" -ex nightpreview " );
+				break;
+			case _EXPOSURE_backlight:
+				tmpCommand->append(" -ex backlight " );
+				break;
+			case _EXPOSURE_spotlight:
+				tmpCommand->append(" -ex spotlight " );
+				break;
+			case _EXPOSURE_sports:
+				tmpCommand->append(" -ex sports " );
+				break;
+			case _EXPOSURE_snow:
+				tmpCommand->append(" -ex snow " );
+				break;
+			case _EXPOSURE_verylong:
+				tmpCommand->append(" -ex verylong " );
+				break;
+			case _EXPOSURE_fixedfps:
+				tmpCommand->append(" -ex fixedfps " );
+			case _EXPOSURE_antishake:
+				tmpCommand->append(" -ex antishake " );
+				break;
+			case _EXPOSURE_fireworks:
+				tmpCommand->append(" -ex fireworks " );
+				break;
+		}
+	}
+    
+    //-awb, --awb	: Set AWB mode (see Notes)
+    if( reqImg->video.awb > 0 )
+	{
+		auxIntToString.str("");
+		switch( reqImg->video.awb )
+		{
+			/*
+			#define     _AWB_off                                1
+			#define     _AWB_auto                               2
+			#define     _AWB_sun                                3
+			#define     _AWB_cloud                              4
+			#define     _AWB_shade                              5
+			#define     _AWB_tungsten                           6
+			#define     _AWB_fluorescent                        7
+			#define     _AWB_incandescent                       8
+			#define     _AWB_flash                              9
+			#define     _AWB_horizon                            10
+			*/		
+			case _AWB_off:
+				tmpCommand->append(" -awb off " );
+				break;
+			case _AWB_auto:
+				tmpCommand->append(" -awb auto " );
+				break;
+			case _AWB_sun:
+				tmpCommand->append(" -awb sun " );
+				break;
+			case _AWB_cloud:
+				tmpCommand->append(" -awb cloud " );
+				break;
+			case _AWB_shade:
+				tmpCommand->append(" -awb shade " );
+				break;
+			case _AWB_tungsten:
+				tmpCommand->append(" -awb tungsten " );
+				break;
+			case _AWB_fluorescent:
+				tmpCommand->append(" -awb fluorescent " );
+				break;
+			case _AWB_incandescent:
+				tmpCommand->append(" -awb incandescent " );
+				break;
+			case _AWB_flash:
+				tmpCommand->append(" -awb flash " );
+				break;
+			case _AWB_horizon:
+				tmpCommand->append(" -awb horizon " );
+				break;
+		}
+	}
+    
+    //-ifx, --imxfx	: Set image effect (see Notes)
+    //-cfx, --colfx	: Set colour effect (U:V)
+    //-mm, --metering	: Set metering mode (see Notes)
+    //-rot, --rotation	: Set image rotation (0-359)
+    //-hf, --hflip	: Set horizontal flip
+    //-vf, --vflip	: Set vertical flip
+    //-roi, --roi	: Set region of interest (x,y,w,d as normalised coordinates [0.0-1.0])
+    
+    //-ss, --shutter	: Set shutter speed in microseconds
+    if( reqImg->video.ss > 0 )
+	{
+		auxIntToString.str("");
+		auxIntToString << reqImg->video.ss;
+		tmpCommand->append(" -ss " + auxIntToString.str());		
+	}
+    
+    //-awbg, --awbgains	: Set AWB gains - AWB mode must be off
+    //-drc, --drc	: Set DRC Level
+    //-st, --stats	: Force recomputation of statistics on stills capture pass
+    //-a, --annotate	: Enable/Set annotate flags or text
+    
+    //-3d, --stereo	: Select stereoscopic mode
+    if( reqImg->video._3d == 1 )
+		tmpCommand->append(" -3d ");
+		
+    //-dec, --decimate	: Half width/height of stereo image
+    if( reqImg->video.dec == 1 )
+		tmpCommand->append(" -dec ");
+    
+    //-3dswap, --3dswap	: Swap camera order for stereoscopic
+    if( reqImg->video._3dswap == 1 )
+		tmpCommand->append(" -3dswap ");
+		
+    //-ae, --annotateex	: Set extra annotation parameters (text size, text colour(hex YUV), bg colour(hex YUV))
+	
+	
 	
 	return tmpCommand;	
 }
