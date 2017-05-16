@@ -184,6 +184,7 @@
 
     typedef struct structRaspivid
     {
+		char o[30];     // Fileout name
         int16_t w;      // --width	: Set image width <size>. Default 1920
         int16_t h;      // --height	: Set image height <size>. Default 1080
         int     b;      // --bitrate	: Set bitrate. Use bits per second (e.g. 10MBits/s would be -b 10000000)

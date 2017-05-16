@@ -3,7 +3,15 @@
 //20 Marzo 2017: - Se agregó la validación de mensajes
 //				 - Lectura de imágenes y recorte de subimágenes
 //9 Mayo 2017 Se agregó la opción 12 para grabar y envíar vídeos
+//16 Mayo 2017 	Se agregó el control del motor al tomar imagen Slide
+//				Se agregó Puerto y USB como argumento de inicio
 
+
+//
+// HELP
+//
+// (ERROR on binding: Address already in use) -> netstat -tulpn -> kill process
+// Para saber el USB -> ls -l /dev/tty (tab)
 
 #include <iostream>
 #include <pthread.h>
@@ -43,6 +51,7 @@ void *sender(void *arg);
 void error(const char *msg);
 void obtainIP(char* host);
 bool sendBigFrame( int newsockfd, std::string bigFrame );
+void funcMotorDoAWalk( int degreeInit, int degreeEnd, int timeMs );
 void recordVideo( strReqImg *reqImg );
 bool sendFile( int newsockfd, std::ifstream &infile );
 void funcPrintFirst(int n, int max, char *buffer);
@@ -51,7 +60,7 @@ unsigned char *funcCropImg(unsigned char* original, int origW, int x1, int y1, i
 std::string file2String( const std::string &fileName );
 bool funcSaveFile(char* fileName, char* data, int fileLen, int w, int h);
 std::string *genSLIDECommand(strReqImg *reqImg);
-std::string *genRaspiVideoCommand(strReqImg *reqImg, const std::string& fileName);
+std::string *genRaspiVideoCommand(strReqImg *reqImg);
 std::string *genCommand(strReqImg *reqImg, const std::string& fileName);
 bool reqImgIsValid( strReqImg *reqImg );
 int fileExists( const std::string& fileName );
@@ -76,95 +85,152 @@ int sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo );
 int saveBinFile_From_u_int8_T( std::string fileName, uint8_t *data, size_t len);
 
 
-
-const unsigned int PORT  = 51717;
+unsigned int PORT;
+std::string SERIAL_PORT;
+//const unsigned int PORT  = 51717;
 //const unsigned int outPORT = 51717;//Mas grande
 
 int main(int argc, char *argv[])
 {
-  pthread_t threadReceiver, threadSender;
-  int rcReceiver, rcSender;
-  int i = 0;
- 
-  //Define variables
-  strReqImg *reqImg 			= (strReqImg*)malloc(sizeof(strReqImg));
-  strReqFileInfo* reqFileInfo 	= (strReqFileInfo*)malloc(sizeof(strReqFileInfo));
-  //strReqImg *reqImgSqu 	= (strReqImg*)malloc(sizeof(strReqImg));
-  
-  //Obtain the IP address
-  char* host = (char*)malloc(NI_MAXHOST * sizeof(char));
-  obtainIP(host);
+	//
+	//Set variables received from aguments
+	//
+	if( argc < 2 || argc > 3 )
+	{	
+		printf("Usage 1: ./HypRaspCam <Port>\n");
+		printf("Usage 2: ./HypRaspCam <Port> </dev/ttyUSBX>\n");
+		fflush(stdout);
+		return -1;
+	}	
+	
+	//PORT
+	std::string tmpPort;
+	tmpPort = "";
+	tmpPort.append(argv[1]);
+	std::istringstream(tmpPort) >> PORT;	
+	
+	if( argc == 3 )
+	{
+		//ttyUSBX
+		SERIAL_PORT = "";
+		SERIAL_PORT.append(argv[2]);
+	}
+	
+	
+	
+	pthread_t threadReceiver, threadSender;
+	int rcReceiver, rcSender;
+	int i = 0;
 
-  //Obtains the camera's name
-  char camName[] = "IRis\0";
-  FILE* pipe;
-  std::string result;
+	//Define variables
+	strReqImg *reqImg 			= (strReqImg*)malloc(sizeof(strReqImg));
+	strReqFileInfo* reqFileInfo 	= (strReqFileInfo*)malloc(sizeof(strReqFileInfo));
+	//strReqImg *reqImgSqu 	= (strReqImg*)malloc(sizeof(strReqImg));
 
-  //Buffer
-  char bufferComm[streamLen];
-  frameStruct *tmpFrame 		          = (frameStruct*)malloc(sizeof(frameStruct));
-  frameStruct *frame2Send 		          = (frameStruct*)malloc(sizeof(frameStruct));
-  frameStruct *frameReceived 	          = (frameStruct*)malloc(sizeof(frameStruct));
-  structRaspcamSettings *raspcamSettings  = (structRaspcamSettings*)malloc(sizeof(structRaspcamSettings));
-  structCamSelected *camSelected          = (structCamSelected*)malloc(sizeof(structCamSelected));
-  unsigned int tmpFrameLen, headerLen;
-  headerLen = sizeof(frameHeader);
-  std::string auxFileName;
-  
+	//Obtain the IP address
+	char* host = (char*)malloc(NI_MAXHOST * sizeof(char));
+	obtainIP(host);
 
-  camSelected->On = false;
+	//Obtains the camera's name
+	char camName[] = "IRis\0";
+	FILE* pipe;
+	std::string result;
+
+	//Buffer
+	char bufferComm[streamLen];
+	frameStruct *tmpFrame 		          = (frameStruct*)malloc(sizeof(frameStruct));
+	frameStruct *frame2Send 		          = (frameStruct*)malloc(sizeof(frameStruct));
+	frameStruct *frameReceived 	          = (frameStruct*)malloc(sizeof(frameStruct));
+	structRaspcamSettings *raspcamSettings  = (structRaspcamSettings*)malloc(sizeof(structRaspcamSettings));
+	structCamSelected *camSelected          = (structCamSelected*)malloc(sizeof(structCamSelected));
+	unsigned int tmpFrameLen, headerLen;
+	headerLen = sizeof(frameHeader);
+	std::string auxFileName;
 
 
-  unsigned int tmpTamArch;
-  float tmpNumMsgs;
+	camSelected->On = false;
 
-  unsigned int fileLen;
-  const unsigned int dataLen = 2592 * 1944 * 3;
-  //unsigned char *data = new unsigned char[ dataLen ];
-  std::ifstream infile;
 
-  //int sockfd, newsockfd, portno;
-  int sockfd, newsockfd;
-  socklen_t clilen;
-  char buffer[frameBodyLen];
+	unsigned int tmpTamArch;
+	float tmpNumMsgs;
+
+	unsigned int fileLen;
+	const unsigned int dataLen = 2592 * 1944 * 3;
+	//unsigned char *data = new unsigned char[ dataLen ];
+	std::ifstream infile;
+
+	//int sockfd, newsockfd, portno;
+	int sockfd, newsockfd;
+	socklen_t clilen;
+	char buffer[frameBodyLen];
+
+	struct sockaddr_in serv_addr, cli_addr;
+	int n, aux;
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0){
+	error("ERROR opening socket");
+	}
+	bzero((char *) &serv_addr, sizeof(serv_addr));
+	//portno = inPORT;
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_addr.s_addr = INADDR_ANY;
+	serv_addr.sin_port = htons(PORT);
+	if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+	error("ERROR on binding");
+	}
   
-  struct sockaddr_in serv_addr, cli_addr;
-  int n, aux;
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  if (sockfd < 0){
-    error("ERROR opening socket");
-  }
-  bzero((char *) &serv_addr, sizeof(serv_addr));
-  //portno = inPORT;
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = INADDR_ANY;
-  serv_addr.sin_port = htons(PORT);
-  if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-    error("ERROR on binding");
-  }
+	if( argc == 3 )
+	{
+		//
+		//SERIAL PORT INITIALIZE
+		//
+		// sudo chmod o+rw /dev/ttyUSBX 						// Permissions to the Serial port
+		// stty -F /dev/ttyUSBX speed 9600 cs8 -cstopb -parenb	// Set speed
+		// tail -f /dev/ttyUSBX &								// Allow arduino to receive messages
+		// echo 111111111111111111 > /dev/ttyUSB0				// Message example	
+		printf("Initializing Serila Port\n");
+		std::string tmpCommand;
+
+		// Permissions to the Serial port
+		tmpCommand = "sudo chmod o+rw ";
+		tmpCommand.append(SERIAL_PORT);
+		//printf("Serial Port: %s\n", tmpCommand.c_str());
+		pipe = popen(tmpCommand.c_str(), "r");
+
+		// Set speed
+		tmpCommand = "stty -F ";
+		tmpCommand.append(SERIAL_PORT);
+		tmpCommand.append(" speed 9600 cs8 -cstopb -parenb");
+		//printf("Serial Port: %s\n", tmpCommand.c_str());
+		pipe = popen(tmpCommand.c_str(), "r");
+
+		//Allow arduino to receive messages
+		tmpCommand = "tail -f ";
+		tmpCommand.append(SERIAL_PORT);
+		tmpCommand.append(" &");
+		//printf("Serial Port: %s\n", tmpCommand.c_str());
+		pipe = popen(tmpCommand.c_str(), "r");
+
+
+		fflush(stdout);
+	}
   
   
   
   
   
-  
-  
-  
-  
-  
-  
-  /*
-  printf("Executing raspistill\n");
-  std::string fileName = "./tmpSnapshots/test.RGB888";
-  if( getRaspImg(reqImg,fileName) ){
+	/*
+	printf("Executing raspistill\n");
+	std::string fileName = "./tmpSnapshots/test.RGB888";
+	if( getRaspImg(reqImg,fileName) ){
 	  printf("Success\n");
 	  std::string tmpImg = file2String(fileName);
 	  printf("size: %d\n",tmpImg.size());
-  }else{
+	}else{
 	  printf("Fail\n");
-  }
-  return 1;
-  */
+	}
+	return 1;
+	*/
   
   
   
@@ -179,7 +245,9 @@ int main(int argc, char *argv[])
   
 
   
-  
+	//WELCOME
+	printf("Welcome!!!\n\n\n");
+	fflush(stdout);
   
   
 
@@ -432,6 +500,13 @@ int main(int argc, char *argv[])
 		write(newsockfd,&buffer,2);
 		//Delete tmpVideo if exist
 		funcClearFolder( "tmpSnapVideos" );
+		
+		//Motor walk
+		if( argc == 3 )
+		{
+			funcMotorDoAWalk( 0, 30, 3000 );
+		}
+			
 		//Start to record a new video
 		recordVideo( reqImg );
 		break;
@@ -460,12 +535,72 @@ int main(int argc, char *argv[])
   return 0;
 }
 
+void funcMotorDoAWalk( int degreeInit, int degreeEnd, int timeMs )
+{
+	//Execute raspistill
+	FILE* pipe;	
+	int i;
+	std::string tmpCommand;
+	
+	//Go to zero
+	tmpCommand = "echo 2 > ";
+	tmpCommand.append(SERIAL_PORT.c_str());
+	for(i=0; i<360; i++)
+	{		
+		pipe = popen(tmpCommand.c_str(), "r");
+		usleep(10*1000);
+	}
+	
+	//Go to ini
+	tmpCommand = "echo 1 > ";
+	tmpCommand.append(SERIAL_PORT.c_str());
+	for(i=0; i<degreeInit; i++)
+	{
+		pipe = popen(tmpCommand.c_str(), "r");
+		//printf("Going to Ini from zero\n");
+		usleep(10*1000);
+	}
+	fflush(stdout);
+	
+	//Wait to stabilize the camera
+	usleep(1800*1000);
+	
+	//Do a walk
+	tmpCommand = "echo 1 > ";
+	tmpCommand.append(SERIAL_PORT.c_str());
+	int delayMs = ceil( (float)timeMs/(float)(degreeEnd-degreeInit));
+	for(i=degreeInit; i<=degreeEnd; i++)
+	{
+		//printf("Walking\n");
+		pipe = popen(tmpCommand.c_str(), "r");
+		usleep(delayMs*1000);
+	}
+	fflush(stdout);
+	
+	//Wait at the end of the walk
+	usleep(2000*1000);
+	
+	//Go to zero
+	tmpCommand = "echo 2 > ";
+	tmpCommand.append(SERIAL_PORT.c_str());
+	for(i=1; i<=360; i++)
+	{		
+		//printf("Returnning to zero\n");
+		pipe = popen(tmpCommand.c_str(), "r");
+		usleep(10*1000);
+	}
+	fflush(stdout);
+	
+	pclose(pipe);
+	
+}
+
 void recordVideo( strReqImg *reqImg )
 {
 	//Concatenate raspisVid command
 	//raspivid -o video.h264 -t 1000
 	//..
-	std::string *raspiVIDEOCommand = genRaspiVideoCommand(reqImg, _PATH_RASP_VIDEO_RECORDED);
+	std::string *raspiVIDEOCommand = genRaspiVideoCommand( reqImg );
 	printf("RaspiVIDEOCommand: %s\n",raspiVIDEOCommand->c_str());
 	//Prepare command as required
 	char *tmpComm = new char[raspiVIDEOCommand->size()+1];
@@ -849,13 +984,13 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	return tmpCommand;
 }
 
-std::string *genRaspiVideoCommand(strReqImg *reqImg, const std::string& fileName)
+std::string *genRaspiVideoCommand(strReqImg *reqImg)
 {
 	//Initialize command
 	//..
 	//std::string *tmpCommand = new std::string("raspivid -w 1296 -h 972 -o ");
 	std::string *tmpCommand = new std::string("raspivid -o ");		
-	tmpCommand->append(fileName);		
+	tmpCommand->append( reqImg->video.o );		
 	
 	std::ostringstream auxIntToString;
 	
@@ -907,10 +1042,6 @@ std::string *genRaspiVideoCommand(strReqImg *reqImg, const std::string& fileName
     //-v, --verbose	: Output verbose information during run
     if( reqImg->video.v > 0 )
 		tmpCommand->append(" -v " );
-    
-    //-t, --timeout	: Time (in ms) to capture for. If not specified, set to 5s. Zero to disable
-    if( reqImg->video.t > 0 )
-		tmpCommand->append(" -t " );
 		
     //-d, --demo	: Run a demo mode (cycle through range of camera options, no capture)
     if( reqImg->video.d > 0 )
@@ -963,7 +1094,7 @@ std::string *genRaspiVideoCommand(strReqImg *reqImg, const std::string& fileName
 		tmpCommand->append(" -pts " );
 		
     //-cd, --codec	: Specify the codec to use - H264 (default) or MJPEG
-	if( strcmp(reqImg->video.cd, "MJPEG") )
+	if( strcmp(reqImg->video.cd, "MJPEG") == 0 )
 		tmpCommand->append(" -cd MJPEG " );
 		
 		
