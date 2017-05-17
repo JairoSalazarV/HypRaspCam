@@ -51,7 +51,7 @@ void *sender(void *arg);
 void error(const char *msg);
 void obtainIP(char* host);
 bool sendBigFrame( int newsockfd, std::string bigFrame );
-void funcMotorDoAWalk( int degreeInit, int degreeEnd, int timeMs );
+void funcMotorDoAWalk( strReqImg *reqImg );
 void recordVideo( strReqImg *reqImg );
 bool sendFile( int newsockfd, std::ifstream &infile );
 void funcPrintFirst(int n, int max, char *buffer);
@@ -502,13 +502,27 @@ int main(int argc, char *argv[])
 		funcClearFolder( "tmpSnapVideos" );
 		
 		//Motor walk
+		pid_t pid;
 		if( argc == 3 )
 		{
-			funcMotorDoAWalk( 0, 30, 3000 );
+			if ( (pid=fork()) == 0 )
+			{//Parallel
+				funcMotorDoAWalk( reqImg );
+			}
+			else
+			{
+				//Start to record a new video
+				recordVideo( reqImg );
+			}
 		}
+		else
+		{
+			//Start to record a new video
+			recordVideo( reqImg );
+		}
+		
 			
-		//Start to record a new video
-		recordVideo( reqImg );
+		
 		break;
 
     //Unrecognized instruction
@@ -535,8 +549,13 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-void funcMotorDoAWalk( int degreeInit, int degreeEnd, int timeMs )
+void funcMotorDoAWalk( strReqImg *reqImg  )
 {
+	int16_t timeMs, degreeEnd, degreeInit;
+	degreeInit 	= reqImg->motorWalk.degreeIni;
+	timeMs 		= reqImg->motorWalk.durationMs;
+	degreeEnd 	= reqImg->motorWalk.degreeEnd;
+	
 	//Execute raspistill
 	FILE* pipe;	
 	int i;
@@ -548,7 +567,7 @@ void funcMotorDoAWalk( int degreeInit, int degreeEnd, int timeMs )
 	for(i=0; i<360; i++)
 	{		
 		pipe = popen(tmpCommand.c_str(), "r");
-		usleep(10*1000);
+		//usleep(10*1000);
 	}
 	
 	//Go to ini
@@ -563,7 +582,7 @@ void funcMotorDoAWalk( int degreeInit, int degreeEnd, int timeMs )
 	fflush(stdout);
 	
 	//Wait to stabilize the camera
-	usleep(1800*1000);
+	usleep(reqImg->motorWalk.stabilizingMs*1000);
 	
 	//Do a walk
 	tmpCommand = "echo 1 > ";
@@ -587,7 +606,7 @@ void funcMotorDoAWalk( int degreeInit, int degreeEnd, int timeMs )
 	{		
 		//printf("Returnning to zero\n");
 		pipe = popen(tmpCommand.c_str(), "r");
-		usleep(10*1000);
+		//usleep(10*1000);
 	}
 	fflush(stdout);
 	
