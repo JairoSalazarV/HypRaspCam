@@ -5,6 +5,7 @@
 //9 Mayo 2017 Se agregó la opción 12 para grabar y envíar vídeos
 //16 Mayo 2017 	Se agregó el control del motor al tomar imagen Slide
 //				Se agregó Puerto y USB como argumento de inicio
+//27 Mayo 2017 Se agrego la opción 4 para tomar foto y devolver status
 
 
 //
@@ -83,7 +84,7 @@ void funcMessage( std::string msg );
 int checkIfRequestedFileExists( int sockfd, strReqFileInfo* reqFileInfo );
 int sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo );
 int saveBinFile_From_u_int8_T( std::string fileName, uint8_t *data, size_t len);
-
+int deleteFileIfExists( const char* fileName );
 
 unsigned int PORT;
 std::string SERIAL_PORT;
@@ -99,6 +100,7 @@ int main(int argc, char *argv[])
 	{	
 		printf("Usage 1: ./HypRaspCam <Port>\n");
 		printf("Usage 2: ./HypRaspCam <Port> </dev/ttyUSBX>\n");
+		printf("Example: ./HypRaspCam 51717 /dev/ttyUSB0\n");
 		fflush(stdout);
 		return -1;
 	}	
@@ -141,6 +143,7 @@ int main(int argc, char *argv[])
 	frameStruct *tmpFrame 		          = (frameStruct*)malloc(sizeof(frameStruct));
 	frameStruct *frame2Send 		          = (frameStruct*)malloc(sizeof(frameStruct));
 	frameStruct *frameReceived 	          = (frameStruct*)malloc(sizeof(frameStruct));
+	structRaspistillCommand* raspistillCommand = (structRaspistillCommand*)malloc(sizeof(structRaspistillCommand));
 	structRaspcamSettings *raspcamSettings  = (structRaspcamSettings*)malloc(sizeof(structRaspcamSettings));
 	structCamSelected *camSelected          = (structCamSelected*)malloc(sizeof(structCamSelected));
 	unsigned int tmpFrameLen, headerLen;
@@ -218,7 +221,6 @@ int main(int argc, char *argv[])
   
   
   
-  
 	/*
 	printf("Executing raspistill\n");
 	std::string fileName = "./tmpSnapshots/test.RGB888";
@@ -276,7 +278,9 @@ int main(int argc, char *argv[])
     //printf("Message(%c%c)\n",frameReceived->msg[0],frameReceived->msg[1]);
     printf("\n");
     switch( frameReceived->header.idMsg ){
+	  //
       //Sending cam settings
+      //
       case 1:
         printf("Hand-shaking\n");
         //Send ACK
@@ -290,7 +294,9 @@ int main(int argc, char *argv[])
         }
         //printf("n(%i)\n", n);
         break;
+      //
       //Execute command and send result
+      //
       case 2:
         printf("Applying command -> %s\n",frameReceived->msg);
 
@@ -335,7 +341,9 @@ int main(int argc, char *argv[])
         }
         */
         break;
-      //Execute command and omit result (only done ack)
+      //
+      //Execute command and omit result (only send ack)
+      //
       case 3:
 
         //Aply message
@@ -366,19 +374,54 @@ int main(int argc, char *argv[])
         }
         */
         break;
-
-	//Test
+	//
+	//  1) Delete last image
+	//	2) Excecute command
+	//	3) Send ACK to inform that it finishes
+	//
     case 4:
+		
+		//Extracts Command Structure		
+		memset( raspistillCommand, '\0', sizeof(structRaspistillCommand)  );		
+		memcpy( raspistillCommand, frameReceived, sizeof(structRaspistillCommand) );
+    
+		//Delete last image
+		deleteFileIfExists(raspistillCommand->fileName);
+				
+		//Show message received    
+		printf( "Raspistill -> %s\n",raspistillCommand->raspiCommand );
+		
+        //Execute raspistill
+		FILE* pipe;
+		pipe = popen(raspistillCommand->raspiCommand, "r");
+		pclose(pipe);
+		printf("Command executed\n");
+		
+		//Verify if it was created the snapshot
+		//..
+		if( fileExists( raspistillCommand->fileName ) )
+			buffer[1] = 1;
+		else
+			buffer[1] = 0;
+        
+		//Send ACK		
+		write(newsockfd,&buffer,2);
+    
 		break;
     
-    //Camera operations      
+    //
+    //Camera operations
+    //
     case 5:
       break;
 
+	//
     //Send image from camera
+    //
     case 6:
       break;
-
+	
+	//
     //Obtain and execute command to aquire image using raspistill
     //..
     case 7:
@@ -964,7 +1007,7 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	}	
 	
 	//Diffraction Shuter speed
-	int shutSpeed = reqImg->raspSett.ShutterSpeed + reqImg->raspSett.ShutterSpeedSmall;
+	int shutSpeed = reqImg->raspSett.ShutterSpeed;
 	if(
 		(!reqImg->squApert && shutSpeed>0) ||	//Whe is by parts
 		(reqImg->fullFrame  && shutSpeed>0)	//Whn is unique and shutter speed has been setted
@@ -1326,20 +1369,23 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 	if(reqImg->raspSett.ColorBalance){
 		tmpCommand->append(" -ifx colourbalance");
 	}
+	
 	//Denoise?
 	if(reqImg->raspSett.Denoise){
 		tmpCommand->append(" -ifx denoise");
-	}	
+	}
+	
 	//Square Shuter speed
-	int shutSpeed = reqImg->raspSett.SquareShutterSpeed + reqImg->raspSett.SquareShutterSpeedSmall;
+	int shutSpeed = reqImg->raspSett.SquareShutterSpeed;
 	if( (reqImg->squApert && shutSpeed>0))
 	{		
 		ss.str("");
 		ss<<shutSpeed;
 		tmpCommand->append(" -ss " + ss.str());
 	}
+	
 	//Diffraction Shuter speed
-	shutSpeed = reqImg->raspSett.ShutterSpeed + reqImg->raspSett.ShutterSpeedSmall;
+	shutSpeed = reqImg->raspSett.ShutterSpeed;
 	if(
 		(!reqImg->squApert && shutSpeed>0) ||	//Whe is by parts
 		(reqImg->fullFrame  && shutSpeed>0)	//Whe is unique and shutter speed has been setted
@@ -1349,6 +1395,7 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 		ss<<shutSpeed;
 		tmpCommand->append(" -ss " + ss.str());
 	}
+	
 	//Trigering timer
 	if( reqImg->raspSett.TriggerTime > 0 )
 	{
@@ -2073,6 +2120,11 @@ int saveBinFile_From_u_int8_T( std::string fileName, uint8_t *data, size_t len)
     fp.write((char*)data, len);
     fp.close();
     return 1;
+}
+
+int deleteFileIfExists( const char* fileName )
+{
+	return unlink(fileName);
 }
 
 
