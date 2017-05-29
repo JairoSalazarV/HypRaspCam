@@ -31,7 +31,7 @@
     //#define _PATH_RASP_VIDEO_RECORDED       "./tmpSnapVideos/tmpVideo.h264"
     #define _PATH_SQUARE_APERTURE           "./XML/squareAperture.xml"
     #define _PATH_REGION_OF_INTERES         "./XML/regionOfInteres.xml"
-    #define	_PATH_IMG_GEN_USING_RASP		"./tmpSnapshots/tmpImg.RGB888"
+    #define	_PATH_IMG_GEN_USING_RASP		"./tmpSnapshots/tmpImg.png"
 
 /*
     typedef struct customLineParameters{
@@ -164,6 +164,12 @@
         int rectW;//Len
         int rectH;//Len
     }squareAperture;
+    
+    typedef struct structSubimage{
+        unsigned char idMsg;
+        squareAperture frame;
+        char fileName[100];
+    }structSubimage;
 
 	typedef struct strSlideSettings
     {

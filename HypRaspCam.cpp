@@ -5,7 +5,7 @@
 //9 Mayo 2017 Se agregó la opción 12 para grabar y envíar vídeos
 //16 Mayo 2017 	Se agregó el control del motor al tomar imagen Slide
 //				Se agregó Puerto y USB como argumento de inicio
-//27 Mayo 2017 Se agrego la opción 4 para tomar foto y devolver status
+//27 Mayo 2017 Se agrego la opción 4 para tomar foto y devolver status||
 
 
 //
@@ -140,12 +140,14 @@ int main(int argc, char *argv[])
 
 	//Buffer
 	char bufferComm[streamLen];
-	frameStruct *tmpFrame 		          = (frameStruct*)malloc(sizeof(frameStruct));
-	frameStruct *frame2Send 		          = (frameStruct*)malloc(sizeof(frameStruct));
-	frameStruct *frameReceived 	          = (frameStruct*)malloc(sizeof(frameStruct));
-	structRaspistillCommand* raspistillCommand = (structRaspistillCommand*)malloc(sizeof(structRaspistillCommand));
-	structRaspcamSettings *raspcamSettings  = (structRaspcamSettings*)malloc(sizeof(structRaspcamSettings));
-	structCamSelected *camSelected          = (structCamSelected*)malloc(sizeof(structCamSelected));
+	frameStruct *tmpFrame 		          		= (frameStruct*)malloc(sizeof(frameStruct));
+	frameStruct *frame2Send 		          	= (frameStruct*)malloc(sizeof(frameStruct));
+	frameStruct *frameReceived 	          		= (frameStruct*)malloc(sizeof(frameStruct));
+	structRaspistillCommand* raspistillCommand 	= (structRaspistillCommand*)malloc(sizeof(structRaspistillCommand));
+	structRaspcamSettings *raspcamSettings  	= (structRaspcamSettings*)malloc(sizeof(structRaspcamSettings));
+	structCamSelected *camSelected          	= (structCamSelected*)malloc(sizeof(structCamSelected));
+	structSubimage *strSubimage       			= (structSubimage*)malloc(sizeof(structSubimage));
+	
 	unsigned int tmpFrameLen, headerLen;
 	headerLen = sizeof(frameHeader);
 	std::string auxFileName;
@@ -168,7 +170,7 @@ int main(int argc, char *argv[])
 	char buffer[frameBodyLen];
 
 	struct sockaddr_in serv_addr, cli_addr;
-	int n, aux;
+	int n, aux, status;
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0){
 	error("ERROR opening socket");
@@ -377,7 +379,7 @@ int main(int argc, char *argv[])
 	//
 	//  1) Delete last image
 	//	2) Excecute command
-	//	3) Send ACK to inform that it finishes
+	//	3) Send ACK; 0:error | 1:done
 	//
     case 4:
 		
@@ -408,12 +410,63 @@ int main(int argc, char *argv[])
 		write(newsockfd,&buffer,2);
     
 		break;
-    
+    /*
     //
-    //Camera operations
+    //Creates subimage
+    //	1) Check if image exists
+    //	2) Check if dimmensions are correct
+    //	3) Replace original image with subimage
+    //	4) Send ACK; 0:error | 1:done
     //
     case 5:
-      break;
+		//Extracts Command Structure
+		status = 1;
+		memset( strSubimage, '\0', sizeof(structSubimage)  );		
+		memcpy( strSubimage, frameReceived, sizeof(structSubimage) );
+		
+		//Check if image exists
+		if( !fileExists(strSubimage->fileName) )
+			status = 0;
+		else
+		{
+			//Load image
+			int imgCols, imgRows, bpp;
+			uint8_t* tmpImg	= stbi_load(strSubimage->fileName, &imgCols, &imgRows, &bpp, 3);
+			
+			//Check if dimmensions are correct
+			if( strSubimage->frame.canvasW != imgCols || strSubimage->frame.canvasH != imgRows )
+			{
+				std::cout << "ERROR image dimensions mismatch" << std::endl;
+				status = 0;
+			}
+			else
+			{			
+				//Replace original image with subimage
+				int x, y, w, h;			
+				x = strSubimage->frame.rectX;
+				y = strSubimage->frame.rectY;
+				w = strSubimage->frame.rectW;
+				h = strSubimage->frame.rectH;
+				uint8_t* croppedImage = subimage( x, y, h, w, tmpImg, imgRows, imgCols );
+				if( saveBinFile_From_u_int8_T( strSubimage->fileName, croppedImage, (w*h*3) ) )
+					std::cout << "File cropped successfully" << std::endl;
+				else
+				{
+					std::cout << "ERROR cropping image" << std::endl;
+					status = 0;
+				}
+			}
+		}
+		
+		//Send ACK; 0:error | 1:done
+		if( status == 1 )
+			buffer[1] = 1;
+		else
+			buffer[1] = 0;	
+		write(newsockfd,&buffer,2);	
+		
+		
+		break;*/
 
 	//
     //Send image from camera
