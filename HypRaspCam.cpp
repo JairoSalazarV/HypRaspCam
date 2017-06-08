@@ -964,7 +964,7 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	}	
 	
 	//Diffraction Shuter speed
-	int shutSpeed = reqImg->raspSett.ShutterSpeed + reqImg->raspSett.ShutterSpeedSmall;
+	int shutSpeed = reqImg->raspSett.ShutterSpeed;
 	if(
 		(!reqImg->squApert && shutSpeed>0) ||	//Whe is by parts
 		(reqImg->fullFrame  && shutSpeed>0)	//Whn is unique and shutter speed has been setted
@@ -1331,7 +1331,7 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 		tmpCommand->append(" -ifx denoise");
 	}	
 	//Square Shuter speed
-	int shutSpeed = reqImg->raspSett.SquareShutterSpeed + reqImg->raspSett.SquareShutterSpeedSmall;
+	int shutSpeed = reqImg->raspSett.SquareShutterSpeed;
 	if( (reqImg->squApert && shutSpeed>0))
 	{		
 		ss.str("");
@@ -1339,7 +1339,7 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 		tmpCommand->append(" -ss " + ss.str());
 	}
 	//Diffraction Shuter speed
-	shutSpeed = reqImg->raspSett.ShutterSpeed + reqImg->raspSett.ShutterSpeedSmall;
+	shutSpeed = reqImg->raspSett.ShutterSpeed;
 	if(
 		(!reqImg->squApert && shutSpeed>0) ||	//Whe is by parts
 		(reqImg->fullFrame  && shutSpeed>0)	//Whe is unique and shutter speed has been setted
