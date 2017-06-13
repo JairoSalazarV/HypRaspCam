@@ -1,3 +1,3 @@
-cd /home/pi/Documents/RaspHypCam/
-./HypRaspCam
+cd /home/pi/Documents/HypCam/
+./HypRaspCam 51717
 
