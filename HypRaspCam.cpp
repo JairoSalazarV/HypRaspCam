@@ -5,7 +5,9 @@
 //9 Mayo 2017 Se agregó la opción 12 para grabar y envíar vídeos
 //16 Mayo 2017 	Se agregó el control del motor al tomar imagen Slide
 //				Se agregó Puerto y USB como argumento de inicio
-//27 Mayo 2017 Se agrego la opción 4 para tomar foto y devolver status||
+//27 Mayo 2017 Se agrego la opción 4 para tomar foto y devolver status
+//09 Junio 2017	Se junto lo que se tenía con la opción de square aperture
+// 				y se optimizó la transmisión de datos
 
 
 //
