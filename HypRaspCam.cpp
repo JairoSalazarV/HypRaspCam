@@ -1,13 +1,14 @@
 //11 August 2016 18:30
-//27 August 2016 morning
-//20 Marzo 2017: - Se agregó la validación de mensajes
-//				 - Lectura de imágenes y recorte de subimágenes
-//9 Mayo 2017 Se agregó la opción 12 para grabar y envíar vídeos
-//16 Mayo 2017 	Se agregó el control del motor al tomar imagen Slide
-//				Se agregó Puerto y USB como argumento de inicio
-//27 Mayo 2017 Se agrego la opción 4 para tomar foto y devolver status
-//09 Junio 2017	Se junto lo que se tenía con la opción de square aperture
-// 				y se optimizó la transmisión de datos
+//27 August 2016	morning
+//20 Marzo 2017: 	- Se agregó la validación de mensajes
+//				 	- Lectura de imágenes y recorte de subimágenes
+//9 Mayo 2017 		Se agregó la opción 12 para grabar y envíar vídeos
+//16 Mayo 2017 		Se agregó el control del motor al tomar imagen Slide
+//					Se agregó Puerto y USB como argumento de inicio
+//27 Mayo 2017 		Se agrego la opción 4 para tomar foto y devolver status
+//09 Junio 2017		Se junto lo que se tenía con la opción de square aperture
+// 					y se optimizó la transmisión de datos
+//10 Octubre 2017	Se actualizó github
 
 
 //
@@ -412,63 +413,37 @@ int main(int argc, char *argv[])
 		write(newsockfd,&buffer,2);
     
 		break;
-    /*
-    //
-    //Creates subimage
-    //	1) Check if image exists
-    //	2) Check if dimmensions are correct
-    //	3) Replace original image with subimage
-    //	4) Send ACK; 0:error | 1:done
-    //
+
+	//
+	//  1) Obtiene commando
+	//	2) Envía ACK
+	//	3) Ejecuta commando
+	//
     case 5:
-		//Extracts Command Structure
-		status = 1;
-		memset( strSubimage, '\0', sizeof(structSubimage)  );		
-		memcpy( strSubimage, frameReceived, sizeof(structSubimage) );
+    
+		//Obtain command
+		printf("Applying command -> %s\n",frameReceived->msg);
 		
-		//Check if image exists
-		if( !fileExists(strSubimage->fileName) )
-			status = 0;
-		else
-		{
-			//Load image
-			int imgCols, imgRows, bpp;
-			uint8_t* tmpImg	= stbi_load(strSubimage->fileName, &imgCols, &imgRows, &bpp, 3);
-			
-			//Check if dimmensions are correct
-			if( strSubimage->frame.canvasW != imgCols || strSubimage->frame.canvasH != imgRows )
-			{
-				std::cout << "ERROR image dimensions mismatch" << std::endl;
-				status = 0;
-			}
-			else
-			{			
-				//Replace original image with subimage
-				int x, y, w, h;			
-				x = strSubimage->frame.rectX;
-				y = strSubimage->frame.rectY;
-				w = strSubimage->frame.rectW;
-				h = strSubimage->frame.rectH;
-				uint8_t* croppedImage = subimage( x, y, h, w, tmpImg, imgRows, imgCols );
-				if( saveBinFile_From_u_int8_T( strSubimage->fileName, croppedImage, (w*h*3) ) )
-					std::cout << "File cropped successfully" << std::endl;
-				else
-				{
-					std::cout << "ERROR cropping image" << std::endl;
-					status = 0;
-				}
-			}
-		}
-		
-		//Send ACK; 0:error | 1:done
-		if( status == 1 )
-			buffer[1] = 1;
-		else
-			buffer[1] = 0;	
-		write(newsockfd,&buffer,2);	
-		
-		
-		break;*/
+		//Semd ACK
+		buffer[1] = 1;	
+		write(newsockfd,&buffer,2);
+
+        //Execute command
+        result = "";//idMsg to send
+        pipe = popen(frameReceived->msg, "r");
+        try {
+          while (!feof(pipe)) {
+            if (fgets(bufferComm, frameBodyLen, pipe) != NULL){
+              result.append( bufferComm );
+            }
+          }
+        } catch (...) {
+          pclose(pipe);
+          throw;
+        }
+        pclose(pipe);
+
+		break;
 
 	//
     //Send image from camera
