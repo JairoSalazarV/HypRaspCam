@@ -420,13 +420,21 @@ int main(int argc, char *argv[])
 	//	3) Ejecuta commando
 	//
     case 5:
-    
-		//Obtain command
-		printf("Applying command -> %s\n",frameReceived->msg);
 		
 		//Semd ACK
 		buffer[1] = 1;	
 		write(newsockfd,&buffer,2);
+		
+		//Delay if required
+		if( frameReceived->header.trigeredTime > 0 )
+		{
+			printf("Dalaying time (%d seconds)\n",frameReceived->header.trigeredTime);
+			fflush(stdout);
+			sleep(frameReceived->header.trigeredTime);
+		}
+		
+		//Obtain command
+		printf("Applying command -> %s\n",frameReceived->msg);
 
         //Execute command
         result = "";//idMsg to send
@@ -442,6 +450,10 @@ int main(int argc, char *argv[])
           throw;
         }
         pclose(pipe);
+        
+        //Notify after finish
+        printf("Command Execueted\n");
+        
 
 		break;
 
