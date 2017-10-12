@@ -322,8 +322,8 @@ int main(int argc, char *argv[])
 
 
         //Send message
-        result = (result.size()>1)?result:"Empty result";
-        printf("\n<%s>\n", result.c_str());
+        result = (result.size()>1)?result:"  ";
+        //printf("\n<%s>\n", result.c_str());
         if( sendBigFrame( newsockfd, result ) ){
           printf("Command result sent\n");
         }else{
