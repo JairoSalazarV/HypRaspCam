@@ -15,9 +15,7 @@ cd RaspHypCam/
 
 g++ HypRaspCam.cpp -o HypRaspCam
 
-sudo nano /etc/init.d/HypCamAutorun
-
-//Copy from autorun.txt
+sudo cp HypCamAutorun /etc/init.d/HypCamAutorun
 
 sudo chmod 755 /etc/init.d/HypCamAutorun
 
