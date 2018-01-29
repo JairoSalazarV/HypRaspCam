@@ -13,6 +13,8 @@ git clone https://github.com/JairoSalazarV/RaspHypCam
 
 cd RaspHypCam/
 
+mkdir tmpSlideLapse, tmpSnapshots, tmpTimeLapse, tmpVideos
+
 g++ HypRaspCam.cpp -o HypRaspCam
 
 sudo cp HypCamAutorun /etc/init.d/HypCamAutorun
