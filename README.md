@@ -31,6 +31,14 @@ sudo update-rc.d RaspHypCam defaults
 
 //If required
 //sudo update-rc.d -f RaspHypCam remove
+
+//------------------------------
+// DHCP
+//------------------------------
+
+Connect Ethernet
+
+https://frillip.com/using-your-raspberry-pi-3-as-a-wifi-access-point-with-hostapd/
  
 
 
