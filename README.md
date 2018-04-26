@@ -17,20 +17,20 @@ mkdir tmpSlideLapse, tmpSnapshots, tmpTimeLapse, tmpVideos
 
 g++ HypRaspCam.cpp -o HypRaspCam
 
-sudo cp HypCamAutorun /etc/init.d/HypCamAutorun
+sudo cp HypCamAutorun /etc/init.d/RaspHypCam
 
-sudo chmod 755 /etc/init.d/HypCamAutorun
+sudo chmod 755 /etc/init.d/RaspHypCam
 
-sudo /etc/init.d/HypCamAutorun start
+sudo /etc/init.d/RaspHypCam start
 
 //Test connection
 
-sudo /etc/init.d/HypCamAutorun stop
+sudo /etc/init.d/RaspHypCam stop
 
-sudo update-rc.d HypCamAutorun defaults
+sudo update-rc.d RaspHypCam defaults
 
 //If required
-//sudo update-rc.d -f HypCamAutorun remove
+//sudo update-rc.d -f RaspHypCam remove
  
 
 
