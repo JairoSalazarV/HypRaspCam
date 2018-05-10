@@ -1,7 +1,3 @@
-git clone --depth=1 https://github.com/JairoSalazarV/RaspHypCam
-
-cd RaspHypCam/
-
 mkdir tmpSlideLapse tmpSnapshots tmpTimeLapse tmpVideos
 
 g++ HypRaspCam.cpp -o HypRaspCam
