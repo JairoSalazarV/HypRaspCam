@@ -9,25 +9,19 @@ raspistill -q 100 -gc -ifx colourbalance -ifx denoise  -o test.RGB888 -t 8000 -s
 // INSTALL
 //------------------------------
 
+cd Documents
+
 git clone --depth=1 https://github.com/JairoSalazarV/RaspHypCam
 
 cd RaspHypCam/
 
-mkdir tmpSlideLapse, tmpSnapshots, tmpTimeLapse, tmpVideos
+chmod a+x install.sh
 
-g++ HypRaspCam.cpp -o HypRaspCam
+./install.sh
 
-sudo cp HypCamAutorun /etc/init.d/RaspHypCam
+Ctrl+C 
 
-sudo chmod 755 /etc/init.d/RaspHypCam
-
-sudo /etc/init.d/RaspHypCam start
-
-//Test connection
-
-sudo /etc/init.d/RaspHypCam stop
-
-sudo update-rc.d RaspHypCam defaults
+sudo reboot // and Test
 
 //If required
 //sudo update-rc.d -f RaspHypCam remove
