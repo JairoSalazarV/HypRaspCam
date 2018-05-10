@@ -21,6 +21,10 @@ chmod a+x install.sh
 
 Ctrl+C 
 
+nano HypRaspCam.cpp // Change Cam Name
+
+g++ HypRaspCam.cpp -o HypRaspCam
+
 sudo reboot // and Test
 
 //If required
