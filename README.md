@@ -19,11 +19,10 @@ chmod a+x install.sh
 
 ./install.sh
 
-Ctrl+C 
+// Change Camera ID
+Ctrl + X -> Y -> Enter
 
-nano HypRaspCam.cpp // Change Cam Name
-
-g++ HypRaspCam.cpp -o HypRaspCam
+Ctrl+C
 
 sudo reboot // and Test
 
