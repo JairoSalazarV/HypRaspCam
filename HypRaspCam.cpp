@@ -36,7 +36,9 @@
 #include <sys/stat.h>
 #include <sstream>
 #include <streambuf>
+
 //#include <fstream>
+//#include <iostream>
 
 #include <ctime>
 
@@ -50,6 +52,12 @@
 #include "stb_image_write.h"
 
 #define NUM_THREADS     5
+#define		_OK			1
+#define		_ERROR		0
+#define		_FAIL		2
+
+using namespace std;
+
 
 void *sender(void *arg);
 void error(const char *msg);
@@ -89,6 +97,8 @@ int sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo );
 int saveBinFile_From_u_int8_T( std::string fileName, uint8_t *data, size_t len);
 int deleteFileIfExists( const char* fileName );
 
+int readFileContain( const string &fileName, string* contain );
+
 unsigned int PORT;
 std::string SERIAL_PORT;
 //const unsigned int PORT  = 51717;
@@ -96,6 +106,8 @@ std::string SERIAL_PORT;
 
 int main(int argc, char *argv[])
 {
+	int aux;
+	
 	//
 	//Set variables received from aguments
 	//
@@ -123,13 +135,13 @@ int main(int argc, char *argv[])
 	
 	
 	
-	pthread_t threadReceiver, threadSender;
-	int rcReceiver, rcSender;
-	int i = 0;
+	//pthread_t threadReceiver, threadSender;
+	//int rcReceiver, rcSender;
+	//int i = 0;
 
 	//Define variables
 	strReqImg *reqImg 			= (strReqImg*)malloc(sizeof(strReqImg));
-	strReqFileInfo* reqFileInfo 	= (strReqFileInfo*)malloc(sizeof(strReqFileInfo));
+	strReqFileInfo* reqFileInfo = (strReqFileInfo*)malloc(sizeof(strReqFileInfo));
 	//strReqImg *reqImgSqu 	= (strReqImg*)malloc(sizeof(strReqImg));
 
 	//Obtain the IP address
@@ -143,15 +155,16 @@ int main(int argc, char *argv[])
 
 	//Buffer
 	char bufferComm[streamLen];
-	frameStruct *tmpFrame 		          		= (frameStruct*)malloc(sizeof(frameStruct));
-	frameStruct *frame2Send 		          	= (frameStruct*)malloc(sizeof(frameStruct));
+	//frameStruct *tmpFrame 		          		= (frameStruct*)malloc(sizeof(frameStruct));
+	//frameStruct *frame2Send 		          	= (frameStruct*)malloc(sizeof(frameStruct));
 	frameStruct *frameReceived 	          		= (frameStruct*)malloc(sizeof(frameStruct));
 	structRaspistillCommand* raspistillCommand 	= (structRaspistillCommand*)malloc(sizeof(structRaspistillCommand));
-	structRaspcamSettings *raspcamSettings  	= (structRaspcamSettings*)malloc(sizeof(structRaspcamSettings));
+	//structRaspcamSettings *raspcamSettings  	= (structRaspcamSettings*)malloc(sizeof(structRaspcamSettings));
 	structCamSelected *camSelected          	= (structCamSelected*)malloc(sizeof(structCamSelected));
-	structSubimage *strSubimage       			= (structSubimage*)malloc(sizeof(structSubimage));
+	//structSubimage *strSubimage       			= (structSubimage*)malloc(sizeof(structSubimage));
 	
-	unsigned int tmpFrameLen, headerLen;
+	//unsigned int tmpFrameLen, headerLen;
+	unsigned int headerLen;
 	headerLen = sizeof(frameHeader);
 	std::string auxFileName;
 
@@ -159,11 +172,11 @@ int main(int argc, char *argv[])
 	camSelected->On = false;
 
 
-	unsigned int tmpTamArch;
-	float tmpNumMsgs;
+	//unsigned int tmpTamArch;
+	//float tmpNumMsgs;
 
-	unsigned int fileLen;
-	const unsigned int dataLen = 2592 * 1944 * 3;
+	//unsigned int fileLen;
+	//const unsigned int dataLen = 2592 * 1944 * 3;
 	//unsigned char *data = new unsigned char[ dataLen ];
 	std::ifstream infile;
 
@@ -173,7 +186,8 @@ int main(int argc, char *argv[])
 	char buffer[frameBodyLen];
 
 	struct sockaddr_in serv_addr, cli_addr;
-	int n, aux, status;
+	//int n, aux, status;
+	int n;
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0){
 	error("ERROR opening socket");
@@ -555,7 +569,8 @@ int main(int argc, char *argv[])
     //..
     case 10:
 		//Order message		
-		memset( reqFileInfo, '\0', sizeof(reqFileInfo)  );		
+		aux = sizeof(reqFileInfo);
+		memset( reqFileInfo, '\0', aux  );		
 		memcpy( reqFileInfo, frameReceived, n );
 		checkIfRequestedFileExists( newsockfd, reqFileInfo );
     	break;
@@ -565,8 +580,9 @@ int main(int argc, char *argv[])
     //command 10.
     //..
     case 11:
-		//Order message	
-		memset( reqFileInfo, '\0', sizeof(reqFileInfo)  );		
+		//Order message
+		aux = sizeof(reqFileInfo);
+		memset( reqFileInfo, '\0', aux );		
 		memcpy( reqFileInfo, frameReceived, n );
 		n = sendRequestedFile( newsockfd, reqFileInfo );
     	break;
@@ -1847,11 +1863,12 @@ int startGenerateSlideCube(int newsockfd, strReqImg *reqImg)
 {
 	//std::cout << "startGenerateSlideCube" << std::endl;
 	
-	int i, n, expectedN;
+	//int i, n, expectedN;
+	int i, expectedN;
 	std::string* tmpImgName = new std::string();
 	std::ostringstream ss;
-	char buffer[frameBodyLen];
-	strNumSlideImgs strNumImgs;
+	//char buffer[frameBodyLen];
+	//strNumSlideImgs strNumImgs;
 	
 	expectedN = ceil(
 						(float)(reqImg->slide.degreeEnd - reqImg->slide.degreeIni) /
@@ -1991,13 +2008,13 @@ uint8_t* subimage( int x1, int y1, int croppedRows, int croppedCols, uint8_t* im
 	}
 
 	int beforeX1	= (x1>0)?x1:0;
-	int afterX2 	= ((x1+croppedCols)<imgCols)?imgCols-(x1+croppedCols):0;
+	//int afterX2 	= ((x1+croppedCols)<imgCols)?imgCols-(x1+croppedCols):0;
 	int beforeY1	= (y1>0)?y1-1:0;
-	int step		= beforeX1 + afterX2;
+	//int step		= beforeX1 + afterX2;
 	
 	//printf( "img(%d x %d) | cropped(%d x %d) beforeX1: %d, afterX2: %d, step: %d\n", imgRows, imgCols, croppedRows, croppedCols,  beforeX1, afterX2, step );
 	
-	int r, c;
+	int r;
 	uint8_t *ptr, *cropPtr;
 	
 	cropPtr = &croppedImg[0];
@@ -2169,75 +2186,20 @@ int deleteFileIfExists( const char* fileName )
 	return unlink(fileName);
 }
 
-
-/*
- * //printf("Inside sendBigFrame\n");
-
-  //get file properties
-  std::string result;
-  frameStruct *frame2Send = (frameStruct *)malloc(sizeof(frameStruct));
-  //infile.open("yo.jpg", std::ifstream::binary);
-  //infile.seekg (0,infile.end);
-  unsigned int fileLen;
-  char buffer[frameBodyLen];
-  int i, n, aux;
-
-  //printf("Len sent\n");
-  fileLen = bigFrame.size();
-  //infile.seekg (0);
-  if( fileLen < 1 ){
-    //Prepare message
-    result.assign("Error reading file");
-    frame2Send->header.idMsg        = (char)3;  
-    frame2Send->header.consecutive  = 1;
-    frame2Send->header.bodyLen      = result.size();
-    bzero(frame2Send->msg,frameBodyLen);        
-    std::copy(result.begin(), result.end(), frame2Send->msg);
-    unsigned int tmpFrameLen = sizeof(frameHeader)+frame2Send->header.bodyLen;
-    n = write(newsockfd,frame2Send,tmpFrameLen);        
-    if (n < 0){
-      error("ERROR writing to socket");
-    }
-  }else{
-
-    //Send Len
-    //printf("fileLen: %i\n", fileLen);
-    n = write(newsockfd,&fileLen,sizeof(unsigned int));
-    if (n < 0){
-      error("ERROR writing to socket");      
-    }
-    //printf("Len sent\n");
-
-    //Get file request
-    //printf("Reading\n");
-    n = read(newsockfd, buffer, frameBodyLen-1);
-    if (n < 0){
-      error("ERROR reading from socket");
-    }
-    //printf("File requested\n");
-
-    //Send file
-    aux = floor( (float)fileLen / (float)frameBodyLen );
-    aux = ((aux*frameBodyLen)<fileLen)?aux+1:aux;
-    printf("numMsgs: %i - frameBodyLen: \n",aux,frameBodyLen);
-    for(i=1; i<=aux; i++){
-      //Send part of the file
-      bzero(buffer,frameBodyLen);
-      memcpy( buffer, &bigFrame[(i-1)*frameBodyLen], frameBodyLen );
-      n = write(newsockfd,buffer,frameBodyLen);
-      if (n < 0){
-        error("ERROR writing to socket");
-      }
-      //Get next part requesst
-      n = read(newsockfd, buffer, frameBodyLen-1);
-      if (n < 0){
-        error("ERROR reading from socket");
-      }
-    }
-  }
-  //infile.close();
-
-  //printf("bigFrame finish\n");
-  return true;
- * 
- * */
+int readFileContain( const string &fileName, string* contain )
+{ 
+	std::ifstream myfile ( fileName.c_str() );
+	if( myfile.is_open() )
+	{
+		if( !getline( myfile, *contain ) )
+		{
+			return _FAIL;
+		}
+		myfile.close();
+	}
+	else
+	{
+		return _ERROR;
+	}
+	return _OK;
+}
