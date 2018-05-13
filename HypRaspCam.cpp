@@ -148,8 +148,18 @@ int main(int argc, char *argv[])
 	char* host = (char*)malloc(NI_MAXHOST * sizeof(char));
 	obtainIP(host);
 
-	//Obtains the camera's name
-	char camName[] = "IRis\0";
+	//Obtains the camera's name	
+	string camName;
+	if( readFileContain( "camName.RaspHypCam", &camName ) != _OK )
+	{
+		cout << "[ERROR] camName.RaspHypCam corrupt or not exists..." << endl;
+		return _ERROR;
+	}
+	if( camName.size() == 0 )
+	{
+		camName.clear();
+		camName.append( "camNameDefault" );
+	}
 	FILE* pipe;
 	std::string result;
 
@@ -306,7 +316,7 @@ int main(int argc, char *argv[])
         camSettings tmpCamSettings;
         tmpCamSettings.idMsg = (char)1;
         memcpy(&tmpCamSettings.IP,host,15);        
-        memcpy(&tmpCamSettings.Alias,camName,20);
+        memcpy(&tmpCamSettings.Alias,camName.c_str(),20);
         n = write(newsockfd,&tmpCamSettings,sizeof(camSettings));
         if (n < 0){
           error("ERROR writing to socket");
