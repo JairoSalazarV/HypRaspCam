@@ -19,10 +19,10 @@ chmod a+x install.sh
 
 ./install.sh
 
-// Change Camera ID
-Ctrl + X -> Y -> Enter
+Ctrl+C //Finish the program test
 
-Ctrl+C
+// Change Camera ID
+nano camName.RaspHypCam
 
 sudo reboot // and Test
 
