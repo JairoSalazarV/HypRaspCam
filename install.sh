@@ -6,8 +6,10 @@ sudo cp HypCamAutorun /etc/init.d/HypRaspCam
 
 sudo chmod 755 /etc/init.d/HypRaspCam
 
-sudo update-rc.d RaspHypCam defaults
+sudo update-rc.d HypRaspCam defaults
 
+echo 'Any Key to Reboot...'
 
+readvar varAnswer
 
 reboot
