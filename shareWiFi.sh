@@ -1,3 +1,8 @@
+echo 'Enter WiFi ID: '
+read SSIDName
+echo 'Enter WiFi Password: '
+read SSIDPsw
+
 sudo apt-get install dnsmasq hostapd
 
 echo 'denyinterfaces wlan0' >> /etc/dhcpcd.conf
@@ -15,10 +20,6 @@ sudo service dhcpcd restart
 sudo ifup wlan0; sudo ifdown wlan0
 
 sudo cp hostapd.conf /etc/hostapd/hostapd.conf
-echo 'Introduce SSID Name: '
-read SSIDName
-echo 'Introduce WiFi Password: '
-read SSIDPsw
 sudo echo "ssid=${SSIDName}" >> /etc/hostapd/hostapd.conf
 sudo echo "wpa_passphrase=${SSIDPsw}" >> /etc/hostapd/hostapd.conf
 
