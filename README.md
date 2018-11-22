@@ -1,10 +1,3 @@
-# RaspHypCam
-raspistill -q 100 -gc -ifx colourbalance -ifx denoise  -o test.RGB888
-raspistill -q 100 -gc -ifx colourbalance -ifx denoise  -o test.RGB888 -t 8000 -ss 2000000
-
-
-
-
 //------------------------------
 // INSTALL
 //------------------------------
@@ -19,25 +12,7 @@ chmod a+x install.sh
 
 sudo reboot
 
-// Change Camera ID
-
-nano camName.HypRaspCam
-
-sudo reboot // and Test
-
-//If required
-//sudo update-rc.d -f HypRaspCam remove
-
-//------------------------------
-// DHCP
-//------------------------------
-
-Connect Ethernet
-
-https://frillip.com/using-your-raspberry-pi-3-as-a-wifi-access-point-with-hostapd/
- 
-
-
+// You could change Camera ID on the file: /home/pi/camName.HypRaspCam
 
 
 
