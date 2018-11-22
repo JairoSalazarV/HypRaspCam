@@ -11,12 +11,14 @@ sudo chmod a+x install.sh
 sudo ./install.sh
 
 
-//--------------------------------------------------------------------//
+//----------------------------------------------------------------------//
 
 NOTES:
 1) This program assumes that your camera has been configured and tested successfully
 
 2) You could change Camera ID on the file: /home/pi/camName.HypRaspCam
+
+3) Tested on NOOBS V3.0.0 on November 22th, 2018
 
   
 
