@@ -11,3 +11,5 @@ sudo update-rc.d RaspHypCam defaults
 sudo /etc/init.d/RaspHypCam start
 
 sudo /etc/init.d/RaspHypCam stop
+
+reboot
