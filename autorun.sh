@@ -1,3 +1,3 @@
-cd /home/pi/RaspHypCam/
+cd /home/pi/HypRaspCam/
 clear
 ./HypRaspCam 51717

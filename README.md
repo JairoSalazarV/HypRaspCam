@@ -9,7 +9,7 @@ raspistill -q 100 -gc -ifx colourbalance -ifx denoise  -o test.RGB888 -t 8000 -s
 // INSTALL
 //------------------------------
 
-git clone --depth=1 https://github.com/JairoSalazarV/RaspHypCam
+git clone --depth=1 https://github.com/JairoSalazarV/HypRaspCam
 
 cd HypRaspCam/
 
@@ -21,12 +21,12 @@ sudo reboot
 
 // Change Camera ID
 
-nano camName.RaspHypCam
+nano camName.HypRaspCam
 
 sudo reboot // and Test
 
 //If required
-//sudo update-rc.d -f RaspHypCam remove
+//sudo update-rc.d -f HypRaspCam remove
 
 //------------------------------
 // DHCP

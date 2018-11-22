@@ -17,17 +17,17 @@
 # Carry out specific functions when asked to by the system
 case "$1" in
   start)
-    echo "Starting RaspHypCam"
+    echo "Starting HypRaspCam"
     # run application you want to start
-    sh /home/pi/RaspHypCam/autorun.sh
+    sh /home/pi/HypRaspCam/autorun.sh
     ;;
   stop)
-    echo "Stopping RaspHypCam"
+    echo "Stopping HypRaspCam"
     # kill application you want to stop
-    killall RaspHypCam
+    killall HypRaspCam
     ;;
   *)
-    echo "Usage: /etc/init.d/RaspHypCam {start|stop}"
+    echo "Usage: /etc/init.d/HypRaspCam {start|stop}"
     exit 1
     ;;
 esac
