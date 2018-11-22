@@ -11,7 +11,7 @@ raspistill -q 100 -gc -ifx colourbalance -ifx denoise  -o test.RGB888 -t 8000 -s
 
 git clone --depth=1 https://github.com/JairoSalazarV/RaspHypCam
 
-cd RaspHypCam/
+cd HypRaspCam/
 
 chmod a+x install.sh
 
