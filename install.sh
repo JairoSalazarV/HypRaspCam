@@ -10,6 +10,6 @@ sudo update-rc.d HypRaspCam defaults
 
 echo 'Any Key to Reboot...'
 
-readvar varAnswer
+read varAnswer
 
 reboot

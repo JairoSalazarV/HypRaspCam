@@ -116,9 +116,9 @@ int main(int argc, char *argv[])
 
 	//Obtains the camera's name	
 	string camName;
-	if( readFileContain( "camName.RaspHypCam", &camName ) != _OK )
+	if( readFileContain( "camName.HypRaspCam", &camName ) != _OK )
 	{
-		cout << "[ERROR] camName.RaspHypCam corrupt or not exists..." << endl;
+		cout << "[ERROR] camName.HypRaspCam corrupt or not exists..." << endl;
 		return _ERROR;
 	}
 	if( camName.size() == 0 )
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 
 	//Buffer
 	char bufferComm[streamLen];
-	frameStruct *frameReceived 	          		= (frameStruct*)malloc(sizeof(frameStruct));
+	frameStruct *frameReceived 	          	= (frameStruct*)malloc(sizeof(frameStruct));
 	structRaspistillCommand* raspistillCommand 	= (structRaspistillCommand*)malloc(sizeof(structRaspistillCommand));
 	structCamSelected *camSelected          	= (structCamSelected*)malloc(sizeof(structCamSelected));
 	
