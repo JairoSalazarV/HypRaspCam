@@ -6,7 +6,7 @@ echo 'Compiling...'
 
 g++ HypRaspCam.cpp -o HypRaspCam
 
-echo 'Linking...'
+echo 'Creating Demon...'
 
 sudo cp HypCamAutorun /etc/init.d/HypRaspCam
 
