@@ -1,20 +1,20 @@
 //------------------------------
 // INSTALL
 //------------------------------
-// This program assumes that your camera has been configured and tested successfully
 
 git clone --depth=1 https://github.com/JairoSalazarV/HypRaspCam
 
 cd HypRaspCam/
 
-chmod a+x install.sh
+sudo chmod a+x install.sh
 
 sudo ./install.sh
 
-// Introduce your SSID and SSID PASSWORD
+NOTES:
+1) This program assumes that your camera has been configured and tested successfully
 
-// You could change Camera ID on the file: /home/pi/camName.HypRaspCam
+2) You could change Camera ID on the file: /home/pi/camName.HypRaspCam
 
-
+  
 
 
