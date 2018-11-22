@@ -1,21 +1,4 @@
-//11 August 2016 18:30
-//27 August 2016	morning
-//20 Marzo 2017: 	- Se agregó la validación de mensajes
-//				 	- Lectura de imágenes y recorte de subimágenes
-//9 Mayo 2017 		Se agregó la opción 12 para grabar y envíar vídeos
-//16 Mayo 2017 		Se agregó el control del motor al tomar imagen Slide
-//					Se agregó Puerto y USB como argumento de inicio
-//27 Mayo 2017 		Se agrego la opción 4 para tomar foto y devolver status
-//09 Junio 2017		Se junto lo que se tenía con la opción de square aperture
-// 					y se optimizó la transmisión de datos
-//10 Octubre 2017	Se actualizó github
-
-
-//
-// HELP
-//
-// (ERROR on binding: Address already in use) -> netstat -tulpn -> kill process
-// Para saber el USB -> ls -l /dev/tty (tab)
+// [21 de Noviembre] Inicia la peparación de la distrfibución en SoftwareX
 
 #include <iostream>
 #include <pthread.h>
@@ -25,7 +8,6 @@
 #include <unistd.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
-//#include <dir.h> 
 #include <netinet/in.h>
 #include <ifaddrs.h>
 #include <netdb.h>
@@ -36,18 +18,11 @@
 #include <sys/stat.h>
 #include <sstream>
 #include <streambuf>
-
-//#include <fstream>
-//#include <iostream>
-
 #include <ctime>
-
 #include "lstStructs.h"
-
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
@@ -77,7 +52,6 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName);
 bool reqImgIsValid( strReqImg *reqImg );
 int fileExists( const std::string& fileName );
 int applyTimeLapseUsingRaspistill(strReqImg *reqImg);
-//bool funcFolderExists( std::string folderPath );
 bool funcPathExists( std::string fileName );
 bool funcCreateFolder( std::string folderName );
 bool funcDeleteFolderRecursively( std::string folderName );
@@ -96,7 +70,6 @@ int checkIfRequestedFileExists( int sockfd, strReqFileInfo* reqFileInfo );
 int sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo );
 int saveBinFile_From_u_int8_T( std::string fileName, uint8_t *data, size_t len);
 int deleteFileIfExists( const char* fileName );
-
 int readFileContain( const string &fileName, string* contain );
 
 unsigned int PORT;
@@ -132,17 +105,10 @@ int main(int argc, char *argv[])
 		SERIAL_PORT = "";
 		SERIAL_PORT.append(argv[2]);
 	}
-	
-	
-	
-	//pthread_t threadReceiver, threadSender;
-	//int rcReceiver, rcSender;
-	//int i = 0;
 
 	//Define variables
 	strReqImg *reqImg 			= (strReqImg*)malloc(sizeof(strReqImg));
 	strReqFileInfo* reqFileInfo = (strReqFileInfo*)malloc(sizeof(strReqFileInfo));
-	//strReqImg *reqImgSqu 	= (strReqImg*)malloc(sizeof(strReqImg));
 
 	//Obtain the IP address
 	char* host = (char*)malloc(NI_MAXHOST * sizeof(char));
@@ -165,50 +131,32 @@ int main(int argc, char *argv[])
 
 	//Buffer
 	char bufferComm[streamLen];
-	//frameStruct *tmpFrame 		          		= (frameStruct*)malloc(sizeof(frameStruct));
-	//frameStruct *frame2Send 		          	= (frameStruct*)malloc(sizeof(frameStruct));
 	frameStruct *frameReceived 	          		= (frameStruct*)malloc(sizeof(frameStruct));
 	structRaspistillCommand* raspistillCommand 	= (structRaspistillCommand*)malloc(sizeof(structRaspistillCommand));
-	//structRaspcamSettings *raspcamSettings  	= (structRaspcamSettings*)malloc(sizeof(structRaspcamSettings));
 	structCamSelected *camSelected          	= (structCamSelected*)malloc(sizeof(structCamSelected));
-	//structSubimage *strSubimage       			= (structSubimage*)malloc(sizeof(structSubimage));
 	
-	//unsigned int tmpFrameLen, headerLen;
 	unsigned int headerLen;
-	headerLen = sizeof(frameHeader);
+	headerLen 			= sizeof(frameHeader);
 	std::string auxFileName;
-
-
-	camSelected->On = false;
-
-
-	//unsigned int tmpTamArch;
-	//float tmpNumMsgs;
-
-	//unsigned int fileLen;
-	//const unsigned int dataLen = 2592 * 1944 * 3;
-	//unsigned char *data = new unsigned char[ dataLen ];
+	camSelected->On 	= false;
 	std::ifstream infile;
-
-	//int sockfd, newsockfd, portno;
 	int sockfd, newsockfd;
 	socklen_t clilen;
 	char buffer[frameBodyLen];
 
 	struct sockaddr_in serv_addr, cli_addr;
-	//int n, aux, status;
 	int n;
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0){
 	error("ERROR opening socket");
 	}
 	bzero((char *) &serv_addr, sizeof(serv_addr));
-	//portno = inPORT;
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
 	serv_addr.sin_port = htons(PORT);
-	if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-	error("ERROR on binding");
+	if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+	{
+		error("ERROR on binding");
 	}
   
 	if( argc == 3 )
@@ -247,35 +195,6 @@ int main(int argc, char *argv[])
 		fflush(stdout);
 	}
   
-  
-  
-  
-	/*
-	printf("Executing raspistill\n");
-	std::string fileName = "./tmpSnapshots/test.RGB888";
-	if( getRaspImg(reqImg,fileName) ){
-	  printf("Success\n");
-	  std::string tmpImg = file2String(fileName);
-	  printf("size: %d\n",tmpImg.size());
-	}else{
-	  printf("Fail\n");
-	}
-	return 1;
-	*/
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-
-  
 	//WELCOME
 	printf("Welcome!!!\n\n\n");
 	fflush(stdout);
@@ -289,12 +208,14 @@ int main(int argc, char *argv[])
     newsockfd	 = accept(sockfd, 
                (struct sockaddr *) &cli_addr, 
                &clilen);
-    if (newsockfd < 0){
+    if (newsockfd < 0)
+    {
       error("ERROR on accept");
     }
     bzero(buffer,frameBodyLen);
     n = read(newsockfd,buffer,frameBodyLen-1);
-    if (n < 0){
+    if (n < 0)
+    {
       error("ERROR reading from socket");
     }
 
@@ -304,7 +225,6 @@ int main(int argc, char *argv[])
 
     //Extract the message and execute instruction identified
     printf("\nidMessage(%i) n(%i)",frameReceived->header.idMsg,n);
-    //printf("Message(%c%c)\n",frameReceived->msg[0],frameReceived->msg[1]);
     printf("\n");
     switch( frameReceived->header.idMsg ){
 	  //
@@ -321,7 +241,6 @@ int main(int argc, char *argv[])
         if (n < 0){
           error("ERROR writing to socket");
         }
-        //printf("n(%i)\n", n);
         break;
       //
       //Execute command and send result
@@ -344,7 +263,6 @@ int main(int argc, char *argv[])
         }
         pclose(pipe);
 
-
         //Send message
         result = (result.size()>1)?result:"  ";
         //printf("\n<%s>\n", result.c_str());
@@ -353,23 +271,8 @@ int main(int argc, char *argv[])
         }else{
           printf("Command result NOT sent\n");
         }
-        
-
-        /*
-        //Prepare message
-        frame2Send->header.idMsg        = (char)2;  
-        frame2Send->header.consecutive  = 1;        
-        frame2Send->header.numTotMsg    = 1;        
-        frame2Send->header.bodyLen      = result.size();
-        bzero(frame2Send->msg,frameBodyLen);
-        std::copy(result.begin(), result.end(), frame2Send->msg);
-        tmpFrameLen = sizeof(frameHeader)+frame2Send->header.bodyLen;
-        n = write(newsockfd,frame2Send,tmpFrameLen);        
-        if (n < 0){
-          error("ERROR writing to socket");
-        }
-        */
         break;
+        
       //
       //Execute command and omit result (only send ack)
       //
@@ -387,21 +290,6 @@ int main(int argc, char *argv[])
         }else{
           printf("Command DONE NOT sent\n");
         }
-
-        //Prepare message
-        /*
-        frame2Send->header.idMsg        = (char)2;  
-  	    frame2Send->header.consecutive  = 1;        
-  	    frame2Send->header.numTotMsg    = 1;        
-  	    frame2Send->header.bodyLen      = result.size();
-  	    bzero(frame2Send->msg,frameBodyLen);
-  	    std::copy(result.begin(), result.end(), frame2Send->msg);
-        tmpFrameLen = sizeof(frameHeader)+frame2Send->header.bodyLen;
-        n = write(newsockfd,frame2Send,tmpFrameLen);        
-        if (n < 0){
-          error("ERROR writing to socket");
-        }
-        */
         break;
 	//
 	//  1) Delete last image
@@ -514,39 +402,10 @@ int main(int argc, char *argv[])
 			  printf("Snapshot[Fail]\n");
 			  break;
 			}
-			
-			//Cut image if necessary
-			
-
 		}
     	break;
 
-	case 8:
-	/*
-		//Prepare memory		
-		memset( reqImg, '\0', sizeof(strReqImg) );
-		memcpy( reqImg, frameReceived, sizeof(strReqImg) );
-		printf("Square: x(%d) y(%d) w(%d) h(%d)\n",reqImg->sqApSett.rectX,reqImg->sqApSett.rectY,reqImg->sqApSett.rectW,reqImg->sqApSett.rectH);
-
-		//Send ACK with camera status
-		buffer[1] = 1;
-		write(newsockfd,&buffer,2);
-		if( buffer[1] == 0 )break;
-		else{
-
-			//Get square-aperture image
-			//..
-			printf("Making the square-aperture snapshot by applying raspistill\n");
-			std::string fileNameSqu = "./tmpSnapshots/tmpImgSqu.RGB888";
-			reqImg->squApert = true;
-			reqImg->needCut	 = true;
-			if( getRaspImg(reqImg,fileNameSqu) ){
-			  printf("Snapshot square-aperture [OK]\n");
-			}else{
-			  printf("Snapshot square-aperture [Fail]\n");
-			  break;
-			}		
-		}*/
+	case 8://NOT ENABLED
     	break;
 
 	//
@@ -631,9 +490,6 @@ int main(int argc, char *argv[])
 			//Start to record a new video
 			recordVideo( reqImg );
 		}
-		
-			
-		
 		break;
 
     //Unrecognized instruction
@@ -647,8 +503,6 @@ int main(int argc, char *argv[])
       break;
 
     }
-
-    
   }
   
   delete[] reqImg;
@@ -803,8 +657,7 @@ int sendRequestedFile( int sockfd, strReqFileInfo* reqFileInfo )
 	//Send file
 	n = write( sockfd, tmpFile.c_str(), fileLen+1 );
 	printf("Bytes inyectados: %d\n",n);
-	
-	
+
 	return n;
 
 }
@@ -851,7 +704,8 @@ int applyTimeLapseUsingRaspistill(strReqImg *reqImg)
 }
 
 
-std::string file2String( const std::string &fileName ){
+std::string file2String( const std::string &fileName )
+{
 	std::ifstream t(fileName.c_str());
 	std::string str;
 	t.seekg(0,std::ios::end);
@@ -864,7 +718,8 @@ std::string file2String( const std::string &fileName ){
 	return str;
 }
 
-bool funcSaveFile(char* fileName, char* data, int fileLen, int w, int h){
+bool funcSaveFile(char* fileName, char* data, int fileLen, int w, int h)
+{
 	std::ofstream outFile( fileName,std::ios::binary );
 	outFile<<"P6\n"<<w<<" "<<h<<" 255\n";
 	outFile.write ( data, fileLen  );
@@ -928,24 +783,13 @@ bool getRaspImg(strReqImg *reqImg, const std::string &fileName){
 		//Normalization
 		if(reqImg->squApert)
 		{
-			//x = (float)reqImg->sqApSett.rectX / (float)_BIG_WIDTH;
-			//y = (float)reqImg->sqApSett.rectY / (float)_BIG_HEIGHT;
-			//w = (float)reqImg->sqApSett.rectW / (float)_BIG_WIDTH;
-			//d = (float)reqImg->sqApSett.rectH / (float)_BIG_HEIGHT;			
-			//printf("Square: x(%.4f) y(%.4f) w(%.4f) h(%.4f)\n",x,y,w,d);
-			//printf("Square: x(%d) y(%d) w(%d) h(%d)\n",reqImg->sqApSett.rectX,reqImg->sqApSett.rectY,reqImg->sqApSett.rectW,reqImg->sqApSett.rectH);
 			x = reqImg->sqApSett.rectX;
 			y = reqImg->sqApSett.rectY;
 			w = reqImg->sqApSett.rectW;
 			h = reqImg->sqApSett.rectH;
 		}
 		else
-		{			
-			//x = (float)reqImg->diffArea.rectX / (float)_BIG_WIDTH;
-			//y = (float)reqImg->diffArea.rectY / (float)_BIG_HEIGHT;
-			//w = (float)reqImg->diffArea.rectW / (float)_BIG_WIDTH;
-			//d = (float)reqImg->diffArea.rectH / (float)_BIG_HEIGHT;
-			//printf("Diff: x(%.4f) y(%.4f) w(%.4f) h(%.4f)\n",x,y,w,d);
+		{
 			x = reqImg->diffArea.rectX;
 			y = reqImg->diffArea.rectY;
 			w = reqImg->diffArea.rectW;
@@ -960,14 +804,8 @@ bool getRaspImg(strReqImg *reqImg, const std::string &fileName){
 			std::cout << "File cropped successfully" << std::endl;
 		else
 			std::cout << "ERROR cropping image" << std::endl;
-			
-		
-		
 	}
-	
-	
-	return true;
-		
+	return true;	
 }
 
 bool reqImgIsValid( strReqImg *reqImg )
@@ -1010,8 +848,6 @@ bool reqImgIsValid( strReqImg *reqImg )
 			return false;
 		}
 	}
-	
-	//
 	if( reqImg->isSlide == true )
 	{
 		if( reqImg->slide.x1 < 0 ){printf( "x1 < 0\n" );return false;}
@@ -1030,10 +866,6 @@ bool reqImgIsValid( strReqImg *reqImg )
 		if( reqImg->slide.degreeJump < 1 ){printf( "degreeJump < 1\n" );return false;}
 		if( reqImg->slide.degreeJump > 360 ){printf( "degreeJump >360\n" );return false;}
 	}
-		
-	
-	
-	
 	
 	return true;
 }
@@ -1065,12 +897,14 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	tmpCommand->append(" -h " + numberToString.str());
 
 	//Colour balance?
-	if(reqImg->raspSett.ColorBalance){
+	if(reqImg->raspSett.ColorBalance)
+	{
 		tmpCommand->append(" -ifx colourbalance");
 	}
 	
 	//Denoise?
-	if(reqImg->raspSett.Denoise){
+	if(reqImg->raspSett.Denoise)
+	{
 		tmpCommand->append(" -ifx denoise");
 	}	
 	
@@ -1087,7 +921,8 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	}
 	
 	//AWB
-	if(strcmp((char*)reqImg->raspSett.AWB, "none")!=0){
+	if(strcmp((char*)reqImg->raspSett.AWB, "none")!=0)
+	{
 		std::string sAWB((char*)reqImg->raspSett.AWB, sizeof(reqImg->raspSett.AWB));
 		tmpCommand->append(" -awb ");
 		tmpCommand->append(sAWB.c_str());
@@ -1095,7 +930,8 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	}
 	
 	//Exposure
-	if(strcmp((char*)reqImg->raspSett.Exposure, "none")!=0){
+	if(strcmp((char*)reqImg->raspSett.Exposure, "none")!=0)
+	{
 		std::string sExposure((char*)reqImg->raspSett.Exposure, sizeof(reqImg->raspSett.Exposure));
 		tmpCommand->append(" -ex ");
 		tmpCommand->append(sExposure.c_str());
@@ -1103,14 +939,12 @@ std::string *genSLIDECommand(strReqImg *reqImg)
 	}
 	
 	//ISO
-	if( reqImg->raspSett.ISO > 0 ){
+	if( reqImg->raspSett.ISO > 0 )
+	{
 		numberToString.str("");
 		numberToString<<reqImg->raspSett.ISO;
 		tmpCommand->append(" -ISO " + numberToString.str());
 	}
-	
-	
-	
 	return tmpCommand;
 }
 
@@ -1118,10 +952,8 @@ std::string *genRaspiVideoCommand(strReqImg *reqImg)
 {
 	//Initialize command
 	//..
-	//std::string *tmpCommand = new std::string("raspivid -w 1296 -h 972 -o ");
 	std::string *tmpCommand = new std::string("raspivid -o ");		
 	tmpCommand->append( reqImg->video.o );		
-	
 	std::ostringstream auxIntToString;
 	
 	//Add seconds
@@ -1417,9 +1249,6 @@ std::string *genRaspiVideoCommand(strReqImg *reqImg)
 		tmpCommand->append(" -3dswap ");
 		
     //-ae, --annotateex	: Set extra annotation parameters (text size, text colour(hex YUV), bg colour(hex YUV))
-	
-	
-	
 	return tmpCommand;	
 }
 
@@ -1434,12 +1263,14 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 	tmpCommand->append(" -n -q 100 -gc");
 	
 	//Colour balance?
-	if(reqImg->raspSett.ColorBalance){
+	if(reqImg->raspSett.ColorBalance)
+	{
 		tmpCommand->append(" -ifx colourbalance");
 	}
 	
 	//Denoise?
-	if(reqImg->raspSett.Denoise){
+	if(reqImg->raspSett.Denoise)
+	{
 		tmpCommand->append(" -ifx denoise");
 	}
 	
@@ -1489,7 +1320,8 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 	tmpCommand->append(" -h " + ss.str());
 	
 	//AWB
-	if(strcmp((char*)reqImg->raspSett.AWB, "none")!=0){
+	if(strcmp((char*)reqImg->raspSett.AWB, "none")!=0)
+	{
 		std::string sAWB((char*)reqImg->raspSett.AWB, sizeof(reqImg->raspSett.AWB));
 		tmpCommand->append(" -awb ");
 		tmpCommand->append(sAWB.c_str());
@@ -1497,7 +1329,8 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 	}
 	
 	//Exposure
-	if(strcmp((char*)reqImg->raspSett.Exposure, "none")!=0){
+	if(strcmp((char*)reqImg->raspSett.Exposure, "none")!=0)
+	{
 		std::string sExposure((char*)reqImg->raspSett.Exposure, sizeof(reqImg->raspSett.Exposure));
 		tmpCommand->append(" -ex ");
 		tmpCommand->append(sExposure.c_str());
@@ -1505,37 +1338,32 @@ std::string *genCommand(strReqImg *reqImg, const std::string& fileName)
 	}
 	
 	//ISO
-	if( reqImg->raspSett.ISO > 0 ){
+	if( reqImg->raspSett.ISO > 0 )
+	{
 		ss.str("");
 		ss<<reqImg->raspSett.ISO;
 		tmpCommand->append(" -ISO " + ss.str());
 	}
-	
-	
 	return tmpCommand;
 }
 
-int fileExists( const std::string& fileName ){
+int fileExists( const std::string& fileName )
+{
 	struct stat buffer;
 	return( stat(fileName.c_str(), &buffer) == 0 );
 }
 
-bool sendBigFrame( int newsockfd, std::string bigFrame ){
-  //printf("Inside sendBigFrame\n");
-
+bool sendBigFrame( int newsockfd, std::string bigFrame )
+{
   //get file properties
   std::string result;
   frameStruct *frame2Send = (frameStruct *)malloc(sizeof(frameStruct));
-  //infile.open("yo.jpg", std::ifstream::binary);
-  //infile.seekg (0,infile.end);
   unsigned int fileLen;
   char buffer[frameBodyLen];
   int i, n, aux;
-
-  //printf("Len sent\n");
   fileLen = bigFrame.size();
-  //infile.seekg (0);
-  if( fileLen < 1 ){
+  if( fileLen < 1 )
+  {
     //Prepare message
     result.assign("Error reading file");
     frame2Send->header.idMsg        = (char)3;  
@@ -1545,15 +1373,18 @@ bool sendBigFrame( int newsockfd, std::string bigFrame ){
     std::copy(result.begin(), result.end(), frame2Send->msg);
     unsigned int tmpFrameLen = sizeof(frameHeader)+frame2Send->header.bodyLen;
     n = write(newsockfd,frame2Send,tmpFrameLen);        
-    if (n < 0){
+    if (n < 0)
+    {
       error("ERROR writing to socket");
     }
-  }else{
-
+  }
+  else
+  {
     //Send Len
     printf("fileLen: %i\n", fileLen);
     n = write(newsockfd,&fileLen,sizeof(unsigned int));
-    if (n < 0){
+    if (n < 0)
+    {
       error("ERROR writing to socket");      
     }
     printf("Len sent\n");
@@ -1564,15 +1395,12 @@ bool sendBigFrame( int newsockfd, std::string bigFrame ){
     if (n < 0){
       error("ERROR reading from socket");
     }
-    //printf("File requested\n");
-
+    
     //Send file
     aux = ceil( (float)fileLen / (float)frameBodyLen );
-    //aux = ((aux*frameBodyLen)<fileLen)?aux+1:aux;
     printf("numMsgs: %i - frameBodyLen: %d \n",aux,frameBodyLen);
-    for(i=1; i<=aux; i++){
-		//printf("Msg: %d\n",i);
-		//Send part of the file
+    for(i=1; i<=aux; i++)
+    {
 		bzero(buffer,frameBodyLen);
 		memcpy( buffer, &bigFrame[(i-1)*frameBodyLen], frameBodyLen );
 		n = write(newsockfd,buffer,frameBodyLen);
@@ -1586,29 +1414,23 @@ bool sendBigFrame( int newsockfd, std::string bigFrame ){
 		}
     }
   }
-  //infile.close();
-
-  //printf("bigFrame finish\n");
   return true;
 }
 
 
-bool sendFile( int newsockfd, std::ifstream &infile ){
-  //printf("Image requested inside\n");
-
+bool sendFile( int newsockfd, std::ifstream &infile )
+{
   //get file properties
   std::string result;
   frameStruct *frame2Send = (frameStruct *)malloc(sizeof(frameStruct));
-  //infile.open("yo.jpg", std::ifstream::binary);
   infile.seekg (0,infile.end);
   unsigned int fileLen;
   char buffer[frameBodyLen];
   int i, n, aux;
-
-  //printf("Len sent\n");
   fileLen = infile.tellg();
   infile.seekg (0);
-  if( fileLen < 1 ){
+  if( fileLen < 1 )
+  {
     //Prepare message
     result.assign("Error reading file");
     frame2Send->header.idMsg        = (char)3;  
@@ -1618,24 +1440,26 @@ bool sendFile( int newsockfd, std::ifstream &infile ){
     std::copy(result.begin(), result.end(), frame2Send->msg);
     unsigned int tmpFrameLen = sizeof(frameHeader)+frame2Send->header.bodyLen;
     n = write(newsockfd,frame2Send,tmpFrameLen);        
-    if (n < 0){
+    if (n < 0)
+    {
       error("ERROR writing to socket");
     }
-  }else{
+  }
+  else
+  {
 
     //Send Len
     n = write(newsockfd,&fileLen,sizeof(unsigned int));
     if (n < 0){
       error("ERROR writing to socket");
     }
-    //printf("Len sent\n");
 
     //Get file request
     n = read(newsockfd, buffer, frameBodyLen-1);
-    if (n < 0){
+    if (n < 0)
+    {
       error("ERROR reading from socket");
     }
-    //printf("File requested\n");
 
     //Send file
     aux = floor( (float)fileLen / (float)frameBodyLen );
@@ -1643,24 +1467,18 @@ bool sendFile( int newsockfd, std::ifstream &infile ){
       //Send part of the file
       bzero(buffer,frameBodyLen);
       infile.read(buffer,frameBodyLen);
-
-      //funcPrintFirst(3,frameBodyLen,buffer);
-
-
-
       n = write(newsockfd,buffer,frameBodyLen);
-      if (n < 0){
+      if (n < 0)
+      {
         error("ERROR writing to socket");
       }
-      //printf("File part sent(%i)\n",i);
 
       //Get next part requesst
       n = read(newsockfd, buffer, frameBodyLen-1);
-      if (n < 0){
+      if (n < 0)
+      {
         error("ERROR reading from socket");
       }
-
-      //printf("File part Requested(%i)\n",i);
     }
     //Send last part of the file
     aux = fileLen - (aux*frameBodyLen);
@@ -1668,43 +1486,37 @@ bool sendFile( int newsockfd, std::ifstream &infile ){
       bzero(buffer,frameBodyLen);
       infile.read(buffer,aux);
       n = write(newsockfd,buffer,aux);
-      if (n < 0){
+      if (n < 0)
+      {
         error("ERROR writing to socket");
       }
-      //printf("Last part sent i(%i) aux(%i) \n",i,aux);
-    }else{
-      //printf("Last part does not exist aux(%i) \n",aux);
     }
-    //printf("Image sent\n");
-
+    else
+    {
+      //Not Implemented
+    }
   }
-  //infile.close();
-
   return true;
 }
 
-
-
-
-
-
-
-
-
-void funcPrintFirst(int n, int max, char *buffer){
+void funcPrintFirst(int n, int max, char *buffer)
+{
   int i;
   printf("First: ");
-  for(i=0;i<n;i++){
+  for(i=0;i<n;i++)
+  {
     printf(" %i ", (int)buffer[i]);
   }
   printf("\nLast: ");
-  for(i=max-1;i>=max-n;i--){
+  for(i=max-1;i>=max-n;i--)
+  {
     printf(" %i ", (int)buffer[i]);
   }
   printf("\n\n");
 }
 
-void *sender(void *arg){
+void *sender(void *arg)
+{
   printf("Sender\n");
   return NULL;
 }
@@ -1739,9 +1551,6 @@ void obtainIP(char* host)
     int fm = AF_INET;
     struct ifaddrs *ifaddr, *ifa;
     int family , s;
-    //char host[NI_MAXHOST];
-    
- 
     if (getifaddrs(&ifaddr) == -1) 
     {
         perror("getifaddrs");
@@ -1775,9 +1584,7 @@ void obtainIP(char* host)
             printf("\n");
         }
     }
- 
     freeifaddrs(ifaddr);
-
 }
 
 bool funcPathExists( std::string fileName )
@@ -1871,20 +1678,13 @@ void startTimLapse(int newsockfd, strReqImg *reqImg)
 
 int startGenerateSlideCube(int newsockfd, strReqImg *reqImg)
 {
-	//std::cout << "startGenerateSlideCube" << std::endl;
-	
-	//int i, n, expectedN;
 	int i, expectedN;
 	std::string* tmpImgName = new std::string();
 	std::ostringstream ss;
-	//char buffer[frameBodyLen];
-	//strNumSlideImgs strNumImgs;
-	
 	expectedN = ceil(
 						(float)(reqImg->slide.degreeEnd - reqImg->slide.degreeIni) /
 						(float)reqImg->slide.degreeJump
 					 );
-	//expectedN = 1;
 	for( i=1; i<=expectedN; i++ )
 	{
 		//Define next image
@@ -1903,23 +1703,16 @@ int startGenerateSlideCube(int newsockfd, strReqImg *reqImg)
 			cropAndTransmitSlide( tmpImgName, newsockfd, reqImg );
 		}	
 	}
-	
 	std::cout << "Notify that finished" << std::endl;
 	i = -1;
 	write(newsockfd,&i,sizeof(int));
-	
 	std::cout << "Slide-Cube sent" << std::endl;
 	fflush(stdout);
-	//delete[] tmpImgName;
-
-
 	return 1;
 }
 
-
 bool cropAndTransmitSlide( std::string* tmpImgName, int newsockfd, strReqImg *reqImg )
 {
-	//std::cout << "cropAndTransmitSlide" << std::endl;
 	//
 	//Crop slide and diffraction areas and put all together into a single array
 	//(cropImgTrans)
@@ -1939,22 +1732,6 @@ bool cropAndTransmitSlide( std::string* tmpImgName, int newsockfd, strReqImg *re
 	uint8_t* tmpImg 		= stbi_load(tmpImgName->c_str(), &imgCols, &imgRows, &bpp, 3);	
 	uint8_t* croppedSlide 	= subimage( x1, y1, rows1, cols1, tmpImg, imgRows, imgCols );
 	uint8_t* croppedDiff 	= subimage( x2, y2, rows2, cols2, tmpImg, imgRows, imgCols );
-	
-	//uint8_t* croppedSlide 	= stbi_load("croppedSlide.png", &cols1, &rows1, &bpp, 3);
-	//uint8_t* croppedDiff 	= stbi_load("croppedDiff.png", &cols2, &rows2, &bpp, 3);
-	
-
-	//printf( "img: %s (R:%d,C:%d), Uno(x1:%d,y1:%d,rows1:%d,cols1:%d)\n",tmpImgName->c_str(),imgRows,imgCols,x1,y1,rows1,cols1 );
-	//printf( "img: %s (R:%d,C:%d), Uno(x1:%d,y1:%d,rows1:%d,cols1:%d)\n",tmpImgName->c_str(),imgRows,imgCols,x2,y2,rows2,cols2 );
-	
-	/*
-	int cropR = 600;
-	int cropC = 1500;
-	int width, height;
-	uint8_t* rgb_image = stbi_load(tmpImgName->c_str(), &width, &height, &bpp, 3);	
-	uint8_t* croppedImg = subimage( 200, 700, cropR, cropC, rgb_image, height, width );
-	stbi_write_png("exampleCropped.png", cropC, cropR, 3, croppedImg, cropC*3);
-	*/
 
 	//Merge cropped imagery into a single array
 	int slideLen 			= (rows1*cols1*3);
@@ -1966,24 +1743,11 @@ bool cropAndTransmitSlide( std::string* tmpImgName, int newsockfd, strReqImg *re
 	delete[] croppedSlide;
 	delete[] croppedDiff;
 	
-	//printf("slideLen(%d), diffLen(%d), totalLen(%d)\n",slideLen,diffLen,totalLen);
-	//fflush(stdout);
-	
-	//Save image
-	//stbi_write_png("./tmpTimeLapse/croppedSlide.png", cols1, rows1, 3, croppedSlide, cols1*3);
-	//stbi_write_png("./tmpTimeLapse/croppedDiff.png", cols2, rows2, 3, croppedDiff, cols2*3);
-	//stbi_write_png("./tmpTimeLapse/allTogether.png", (cols1+cols2), rows1, 3, cropImgTrans, (cols1+cols2)*3);
-	
 	//
 	//Transmit image
 	//
-	//funcGenericSendFrame( newsockfd, cropImgTrans, totalLen );
-	funcSendOneMessage( newsockfd, cropImgTrans, totalLen );
-	
-	//delete[] tmpImg;	
+	funcSendOneMessage( newsockfd, cropImgTrans, totalLen );	
 	delete[] cropImgTrans;	
-	
-	//funcMessage("termina: cropAndTransmitSlide");
 	
 	return true;
 }
@@ -2012,18 +1776,11 @@ uint8_t* subimage( int x1, int y1, int croppedRows, int croppedCols, uint8_t* im
 			funcMessage( "y1 > imgRows" );
 		if( y1 < 0 )
 			funcMessage( "y1 < 0" );
-		
-		
 		return croppedImg;
 	}
 
 	int beforeX1	= (x1>0)?x1:0;
-	//int afterX2 	= ((x1+croppedCols)<imgCols)?imgCols-(x1+croppedCols):0;
 	int beforeY1	= (y1>0)?y1-1:0;
-	//int step		= beforeX1 + afterX2;
-	
-	//printf( "img(%d x %d) | cropped(%d x %d) beforeX1: %d, afterX2: %d, step: %d\n", imgRows, imgCols, croppedRows, croppedCols,  beforeX1, afterX2, step );
-	
 	int r;
 	uint8_t *ptr, *cropPtr;
 	
@@ -2045,48 +1802,7 @@ uint8_t* subimage( int x1, int y1, int croppedRows, int croppedCols, uint8_t* im
 
 int funcGenericSendFrame( int newsockfd, u_int8_t* frame, int lenToSend )
 {
-	//std::cout << "funcGenericSendFrame" << std::endl;
-	
-	//Send frameLen and number of messages to send
-	//int numMsgs = floor( (float)lenToSend / (float)frameBodyLen );
-	
-	//u_int8_t* internFrame = (u_int8_t*)frame;
-	
-	//funcSendOneMessage( newsockfd, (void*)&lenToSend, sizeof(int) );
-
-	//funcSendOneMessage( newsockfd, (void*)&numMsgs, sizeof(int) );
-	
 	funcSendOneMessage( newsockfd, frame, lenToSend );
-
-
-	/*
-	//Send frame
-	int i, framePos;
-	i 		 	= 0;
-	framePos 	= 0;
-	for( i=0; i<numMsgs; i++ )
-	{
-		funcSendOneMessage( newsockfd, &frame[framePos], frameBodyLen );
-		framePos += frameBodyLen;
-	}
-	//Send last message if necessary
-	int remainder = lenToSend%frameBodyLen;
-	if( remainder > 0 )
-	{
-		printf("Remainder: %d framePos:%d\n",remainder,framePos);
-		fflush(stdout);
-		funcSendOneMessage( newsockfd, &frame[framePos], remainder );
-		framePos += remainder;
-	}
-	
-	
-	funcMessage("\nEnd for");
-	*/
-	
-	
-	
-	
-
 	return 1;
 }
 
@@ -2110,9 +1826,9 @@ strReqSubframe* readSubframeRequested( int newsockfd, strReqSubframe* subframeRe
 	//Wait for request
 	n = read(newsockfd, buffer, structSize);
 	if( n < 0 )
+	{
 		return subframeReq;//0's filled
-	//std::cout << "Requiring parameters, n: " << n << std::endl;
-	
+	}
 	//Save parameters acquired
 	memcpy(subframeReq,buffer,structSize-1);
 	
@@ -2136,14 +1852,10 @@ int funcSendOneMessage( int newsockfd, void* frame, int lenToSend )
 
 int funcSendACK( int newsockfd, u_int8_t ID )
 {
-	//funcMessage("funcSendACK");
-	
 	int n;
 	u_int8_t buffer[2];
 	buffer[0] = 1;
 	buffer[1] = ID;
-	
-	//printf("buffer[0](%d) buffer[1](%d)\n",buffer[0],buffer[1]);
 	
 	//Send ACK message
 	n = write(newsockfd,&buffer[0],3);
@@ -2151,7 +1863,6 @@ int funcSendACK( int newsockfd, u_int8_t ID )
 	//If message sent complete
 	if( n == 3 )
 	{
-		//printf("n(%d)\n",n);
 		return 1;
 	}
 	
@@ -2161,8 +1872,6 @@ int funcSendACK( int newsockfd, u_int8_t ID )
 
 int funcSendERROR( int newsockfd, u_int8_t ID )
 {
-	//funcMessage("funcSendERROR");
-	
 	int n;
 	u_int8_t buffer[2];
 	buffer[0] = 0;
