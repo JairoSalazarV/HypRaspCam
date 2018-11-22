@@ -9,3 +9,5 @@ sudo chmod 755 /etc/init.d/RaspHypCam
 sudo update-rc.d RaspHypCam defaults
 
 sudo /etc/init.d/RaspHypCam start
+
+sudo /etc/init.d/RaspHypCam stop

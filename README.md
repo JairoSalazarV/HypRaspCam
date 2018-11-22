@@ -9,8 +9,6 @@ raspistill -q 100 -gc -ifx colourbalance -ifx denoise  -o test.RGB888 -t 8000 -s
 // INSTALL
 //------------------------------
 
-cd Documents
-
 git clone --depth=1 https://github.com/JairoSalazarV/RaspHypCam
 
 cd RaspHypCam/
@@ -19,7 +17,7 @@ chmod a+x install.sh
 
 ./install.sh
 
-Ctrl+C //Finish the program test
+sudo reboot
 
 // Change Camera ID
 
