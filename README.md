@@ -12,6 +12,10 @@ sudo chmod a+x install.sh
 
 sudo ./install.sh
 
+sudo ./shareWiFi.sh
+
+sudo reboot
+
 
 //-------------------------------------------------------------------------//
 
