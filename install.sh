@@ -14,9 +14,9 @@ sudo chmod 755 /etc/init.d/HypRaspCam
 
 sudo update-rc.d HypRaspCam defaults
 
-#echo 'Setting DHCP on WiFi...'
+echo 'Setting DHCP on WiFi...'
 
-#sudo ./shareWiFi.sh
+sudo ./shareWiFi.sh
 
 echo 'Instalation Finished Successfully...'
 
