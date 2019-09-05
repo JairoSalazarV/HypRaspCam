@@ -12,9 +12,6 @@ sudo chmod a+x install.sh
 
 sudo ./install.sh
 
-sudo reboot
-
-
 //-------------------------------------------------------------------------//
 
 NOTES:
