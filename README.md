@@ -19,7 +19,7 @@ NOTES:
 
 2) You could change Camera ID on the file: /home/pi/camName.HypRaspCam
 
-3) Tested on NOOBS V3.0.0 on November 22th, 2018
+3) Tested on NOOBS V3.0.0 on September 05, 2019
 
   
 
