@@ -15,8 +15,8 @@ echo '    network 172.24.1.0' >> /etc/network/interfaces
 echo '    broadcast 172.24.1.255' >> /etc/network/interfaces
 echo '#    wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf' >> /etc/network/interfaces
 
-systemctl unmask dhcpcd.service
-systemctl unmask hostapd.service
+sudo systemctl unmask dhcpcd.service
+sudo systemctl unmask hostapd.service
 
 sudo service dhcpcd restart
 
