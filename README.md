@@ -2,6 +2,8 @@
 INSTALL
 ------------------------------//
 
+sudo apt-get update
+
 git clone --depth=1 https://github.com/JairoSalazarV/HypRaspCam
 
 cd HypRaspCam/
